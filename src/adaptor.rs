@@ -64,45 +64,37 @@ fn get_mac_address_windows(interface_name: &str) -> String {
     use std::process::Command;
 
     let ps_script = format!(
-        "Get-NetAdapter | Where-Object {{ $_.InterfaceGuid -eq '{}' }} | Select-Object -ExpandProperty MacAddress",
-        interface_name
+        "Get-NetAdapter | Where-Object {{ $_.InterfaceGuid -eq '{interface_name}' }} | Select-Object -ExpandProperty MacAddress",
     );
 
     let output = Command::new("powershell")
         .args(["-Command", &ps_script])
         .output();
 
-    match output {
-        Ok(output) => {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            let mac = output_str.trim();
-            if !mac.is_empty() && mac != "MacAddress" {
-                return mac.to_string();
-            }
+    if let Ok(output) = output {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let mac = output_str.trim();
+        if !mac.is_empty() && mac != "MacAddress" {
+            return mac.to_string();
         }
-        Err(_) => {}
     }
 
     let wmi_query = format!(
-        "wmic path win32_networkadapter where \"GUID='{}' and NetEnabled=true\" get MACAddress /format:list",
-        interface_name
+        "wmic path win32_networkadapter where \"GUID='{interface_name}' and NetEnabled=true\" get MACAddress /format:list",
     );
 
     let output = Command::new("cmd").args(["/C", &wmi_query]).output();
 
-    match output {
-        Ok(output) => {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            for line in output_str.lines() {
-                if line.starts_with("MACAddress=") {
-                    let mac = line.replace("MACAddress=", "").trim().to_string();
-                    if !mac.is_empty() {
-                        return mac;
-                    }
+    if let Ok(output) = output {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        for line in output_str.lines() {
+            if line.starts_with("MACAddress=") {
+                let mac = line.replace("MACAddress=", "").trim().to_string();
+                if !mac.is_empty() {
+                    return mac;
                 }
             }
         }
-        Err(_) => {}
     }
 
     "Unknown".to_string()
@@ -112,7 +104,7 @@ fn get_mac_address_windows(interface_name: &str) -> String {
 fn get_mac_address_linux(interface_name: &str) -> String {
     use std::fs;
 
-    let path = format!("/sys/class/net/{}/address", interface_name);
+    let path = format!("/sys/class/net/{interface_name}/address",);
     match fs::read_to_string(&path) {
         Ok(mac) => mac.trim().to_string(),
         Err(_) => "Unknown".to_string(),
