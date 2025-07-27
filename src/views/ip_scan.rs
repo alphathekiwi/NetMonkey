@@ -3,20 +3,30 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use iced::widget::Column;
-use iced::widget::{button, column, text};
+use iced::widget::{button, column, progress_bar, row, stack, text};
 use iced::{Element, Fill, Subscription};
 
+use crate::views::settings::IpScannerApp;
 use crate::{Msg, hero_image};
 
-pub fn view(ips: &[ScannedIp]) -> Column<'_, Msg> {
-    match ips.is_empty() {
+pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
+    match app.ips.is_empty() {
         true => {
             column!(
-                button(hero_image())
+                stack!(
+                    hero_image(),
+                    button(
+                        text("Scan Network")
+                            .width(Fill)
+                            .center()
+                            .size(20)
+                            .color([0.7, 0.7, 0.7])
+                    )
                     .style(button::primary)
                     .on_press(Msg::BeginScan)
                     .width(Fill)
                     .padding(8),
+                ),
                 text("If I were a grease monkey\nwhy would I need this net?")
                     .width(Fill)
                     .center()
@@ -25,8 +35,17 @@ pub fn view(ips: &[ScannedIp]) -> Column<'_, Msg> {
             )
         }
         false => {
-            let ips = ips.iter().map(|s| s.into());
-            Column::with_children(ips).spacing(10)
+            let ping = app.ips.iter().map(ScannedIp::ping_elem);
+            let ips = app.ips.iter().map(ScannedIp::ips_elem);
+            let ports = app.ips.iter().map(ScannedIp::ports_elem);
+            column!(
+                progress_bar(0.0..=255.0, app.scan_progress as f32),
+                row![
+                    Column::with_children(ping).spacing(10),
+                    Column::with_children(ips).spacing(10),
+                    Column::with_children(ports).spacing(10),
+                ]
+            )
         }
     }
 }
@@ -57,6 +76,7 @@ pub fn subscription() -> Subscription<Msg> {
                             Ok((_, duration)) => {
                                 println!("Ping successful for {ip}: {duration:?}");
                                 let _ = tx.send(Msg::PingResult(ScannedIp {
+                                    ping: duration.as_millis(),
                                     ip,
                                     alive: true,
                                     ports: Vec::new(),
@@ -88,16 +108,45 @@ pub fn subscription() -> Subscription<Msg> {
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct ScannedIp {
-    ip: IpAddr,
     alive: bool,
+    ip: IpAddr,
+    ping: u128,
     ports: Vec<u16>,
 }
-impl<'a, Message, Theme, Renderer> From<&ScannedIp> for Element<'a, Message, Theme, Renderer>
-where
-    Theme: iced::widget::text::Catalog + 'a,
-    Renderer: iced_core::text::Renderer + 'a,
-{
-    fn from(scan: &ScannedIp) -> Element<'a, Message, Theme, Renderer> {
-        text(scan.ip.to_string()).width(Fill).center().into()
+impl ScannedIp {
+    fn ping_elem<'a, Message, Theme, Renderer>(&self) -> Element<'a, Message, Theme, Renderer>
+    where
+        Theme: iced::widget::text::Catalog + 'a,
+        Renderer: iced_core::text::Renderer + 'a,
+    {
+        text(self.ping.to_string() + "ms")
+            .width(Fill)
+            .center()
+            .into()
+    }
+    fn ips_elem<'a, Message, Theme, Renderer>(&self) -> Element<'a, Message, Theme, Renderer>
+    where
+        Theme: iced::widget::text::Catalog + 'a,
+        Renderer: iced_core::text::Renderer + 'a,
+    {
+        text(self.ip.to_string()).width(Fill).center().into()
+    }
+    fn ports_elem<'a, Message, Theme, Renderer>(&self) -> Element<'a, Message, Theme, Renderer>
+    where
+        Theme: iced::widget::text::Catalog + 'a,
+        Renderer: iced_core::text::Renderer + 'a,
+    {
+        text(self.ports_to_string()).width(Fill).center().into()
+    }
+    pub fn ports_to_string(&self) -> String {
+        match self.ports.is_empty() {
+            true => String::from("<none>"),
+            false => self
+                .ports
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>()
+                .join(", "),
+        }
     }
 }

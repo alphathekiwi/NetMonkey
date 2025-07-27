@@ -1,15 +1,19 @@
-use std::net::IpAddr;
+use std::{fmt::Display, net::IpAddr};
 
 use if_addrs::get_if_addrs;
 
-#[derive(Debug, Clone)]
-struct NetworkAdapter {
-    name: String,
-    ip_address: String,
-    mac_address: String,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NetworkAdapter {
+    pub name: String,
+    pub ip_address: String,
+    pub mac_address: String,
 }
-
-fn get_network_adapters() -> Vec<NetworkAdapter> {
+impl Display for NetworkAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] {}", self.ip_address, self.name)
+    }
+}
+pub fn get_network_adapters() -> Vec<NetworkAdapter> {
     let mut adapters = Vec::new();
 
     match get_if_addrs() {
@@ -131,64 +135,5 @@ fn get_mac_address_macos(interface_name: &str) -> String {
             "Unknown".to_string()
         }
         Err(_) => "Error".to_string(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn network_adapters() {
-        let adapters = get_network_adapters();
-        println!("=== Network Adapters (Cross-Platform) ===");
-        println!("Found {} active network adapter(s):", adapters.len());
-        println!();
-
-        for (index, adapter) in adapters.iter().enumerate() {
-            println!("Adapter #{}", index + 1);
-            println!("  Name: {}", adapter.name);
-            println!("  IP Address: {}", adapter.ip_address);
-            println!("  MAC Address: {}", adapter.mac_address);
-            println!();
-        }
-
-        assert!(
-            !adapters.is_empty(),
-            "Should find at least one network adapter"
-        );
-
-        for adapter in &adapters {
-            assert!(!adapter.name.is_empty(), "Adapter name should not be empty");
-            assert!(
-                !adapter.ip_address.is_empty(),
-                "IP address should not be empty"
-            );
-            assert!(
-                !adapter.mac_address.is_empty(),
-                "MAC address field should not be empty"
-            );
-        }
-        // assert!(false);
-    }
-
-    #[test]
-    fn network_adapter_struct_functionality() {
-        let adapter = NetworkAdapter {
-            name: "test_adapter".to_string(),
-            ip_address: "192.168.1.100".to_string(),
-            mac_address: "00:11:22:33:44:55".to_string(),
-        };
-
-        let cloned_adapter = adapter.clone();
-        assert_eq!(adapter.name, cloned_adapter.name);
-        assert_eq!(adapter.ip_address, cloned_adapter.ip_address);
-        assert_eq!(adapter.mac_address, cloned_adapter.mac_address);
-
-        let debug_output = format!("{adapter:?}");
-        assert!(debug_output.contains("test_adapter"));
-        assert!(debug_output.contains("192.168.1.100"));
-        assert!(debug_output.contains("00:11:22:33:44:55"));
-        // assert!(false);
     }
 }

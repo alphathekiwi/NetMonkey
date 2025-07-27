@@ -1,0 +1,9 @@
+{
+  "starting_ip": "192.168.1.1",
+  "subnet_mask": 24,
+  "ports": [
+    80,
+    443
+  ],
+  "forced_ip_mode": "Any"
+}

@@ -1,28 +1,25 @@
 // #![allow(unused_imports, unused)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use iced::keyboard::key::Named;
-use iced::keyboard::{Key, Modifiers};
-use iced::widget::button::Status;
-use iced::widget::image as iced_image;
+use iced::keyboard::{Key, Modifiers, key::Named};
 use iced::widget::image::Handle;
 use iced::widget::{Image, Row, button, center, column, text};
-use iced::window::icon::from_file_data;
-use iced::window::{Mode, Settings};
+use iced::widget::{button::Status, image as iced_image};
+use iced::window::{Mode, Settings, icon::from_file_data};
 use iced::{Center, Element, Fill, Subscription, Task as Command, Theme, keyboard, window};
 use image::ImageFormat;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::views::ip_scan::{self, ScannedIp};
-use crate::views::settings::{IpScannerApp, ModeTab};
+use crate::adaptor::NetworkAdapter;
+use crate::views::ip_scan::ScannedIp;
+use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
 
 mod adaptor;
+mod components;
 mod views;
 
 pub fn main() -> iced::Result {
-    #[cfg(not(target_arch = "wasm32"))]
-    tracing_subscriber::fmt::init();
+    // #[cfg(not(target_arch = "wasm32"))]
+    // tracing_subscriber::fmt::init();
 
     let window = Settings {
         icon: from_file_data(APP_ICON, Some(ImageFormat::Ico)).ok(),
@@ -47,12 +44,16 @@ pub fn hero_image() -> Image<Handle> {
 
 #[derive(Debug, Clone)]
 pub enum Msg {
+    Loaded(Option<(AppConfig, Vec<NetworkAdapter>)>),
     TabChanged(ModeTab),
-    TabPressed { shift: bool },
-    ToggleFullscreen(Mode),
+    FocusMove { shift: bool },
+    WinSize(Mode),
     BeginScan,
     ScanComplete,
     PingResult(ScannedIp),
+    Testing,
+    Config(ChangeConfig),
+    Adaptor(NetworkAdapter),
 }
 impl Msg {
     fn key_press(any_key: Key, mods: Modifiers) -> Option<Msg> {
@@ -60,14 +61,17 @@ impl Msg {
             return None;
         };
         match (key, mods) {
-            (Named::ArrowUp, Modifiers::SHIFT) => Some(Msg::ToggleFullscreen(Mode::Fullscreen)),
-            (Named::ArrowDown, Modifiers::SHIFT) => Some(Msg::ToggleFullscreen(Mode::Windowed)),
+            (Named::ArrowUp, Modifiers::SHIFT) => Some(Msg::WinSize(Mode::Fullscreen)),
+            (Named::ArrowDown, Modifiers::SHIFT) => Some(Msg::WinSize(Mode::Windowed)),
             (Named::Tab, _) => Some(Msg::tab(mods.shift())),
             _ => None,
         }
     }
     fn tab(shift: bool) -> Self {
-        Self::TabPressed { shift }
+        Self::FocusMove { shift }
+    }
+    fn subnet_mask(subnet_mask: u8) -> Self {
+        Self::Config(ChangeConfig::SubnetMask(subnet_mask.to_string()))
     }
 }
 
@@ -82,54 +86,64 @@ impl IpScannerApp {
     }
 
     fn initialize() -> (Self, Command<Msg>) {
-        (Self::default(), Command::none())
+        (
+            Self::default(),
+            Command::perform(AppConfig::load(), Msg::Loaded),
+        )
     }
 
-    fn update(&mut self, message: Msg) -> Command<Msg> {
-        match message {
-            Msg::TabChanged(tab) => {
-                self.tab = tab;
-                Command::none()
+    fn update(&mut self, msg: Msg) -> Command<Msg> {
+        use iced::widget::{focus_next, focus_previous};
+        use window::{change_mode, get_latest};
+        // All Msgs that return a Command
+        let cmd = match &msg {
+            Msg::WinSize(mode) => {
+                let mode = *mode; // Copy the mode value
+                get_latest().and_then(move |id| change_mode(id, mode))
             }
-            Msg::TabPressed { shift } => {
-                if shift {
-                    iced::widget::focus_previous()
-                } else {
-                    iced::widget::focus_next()
-                }
-            }
-            Msg::ToggleFullscreen(mode) => {
-                window::get_latest().and_then(move |window| window::change_mode(window, mode))
-            }
-            Msg::PingResult(res) => {
-                // Add IP to your UI list immediately
-                self.ips.push(res);
-                Command::none()
-            }
-            Msg::BeginScan => {
-                println!("Starting scan...");
-                self.scan_progress = 1;
-                Command::none()
-            }
-            Msg::ScanComplete => {
-                println!("Scan completed!");
-                self.scan_progress = 0;
-                Command::none()
-            }
+            Msg::FocusMove { shift: true } => focus_previous(),
+            Msg::FocusMove { shift: false } => focus_next(),
+            _ => Command::none(),
+        };
+        // All Msgs that should print
+        match &msg {
+            Msg::BeginScan => println!("Starting scan..."),
+            Msg::ScanComplete => println!("Scan completed!"),
+            Msg::Testing => println!("Test clicked"),
+            Msg::Config(change) => println!("Updating config {change:?}"),
+            _ => {}
         }
+        // All Msgs that should update the state
+        match msg {
+            Msg::Loaded(Some((c, a))) => self.loaded(c, a),
+            Msg::PingResult(res) => {
+                self.scan_progress += 1;
+                self.ips.push(res);
+            }
+            Msg::TabChanged(tab) => self.tab = tab,
+            Msg::BeginScan => self.scan_progress = 0,
+            Msg::ScanComplete => self.scan_progress = 255,
+            Msg::Config(change) => self.config.update(change),
+            Msg::Adaptor(a) => self.config.update(ChangeConfig::StartingIp(a.ip_address)),
+            _ => {}
+        }
+        cmd
     }
 
     fn view(&self) -> Element<'_, Msg> {
         let tabs = self.render_tabs();
-
         let col = match self.tab {
-            ModeTab::IpScan => ip_scan::view(&self.ips),
+            ModeTab::IpScan => views::ip_scan::view(self),
             ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(),
             ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(),
-            _ => views::settings::view(),
+            _ => views::settings::view(self),
         };
         let content = column![tabs, col].height(Fill).spacing(20).max_width(800);
-
+        // Create a container with a background image let background_image = Handle::from_bytes(APP_BACKGROUND); // Assuming APP_BACKGROUND is defined
+        // let bg = hero_image();
+        // let background = Container::new(content)
+        //     .style(|v| iced::widget::container::Style::default().background(bg))
+        //     .padding(40);
         center(content).padding(40).into()
     }
 
@@ -153,50 +167,10 @@ impl IpScannerApp {
 
     fn subscription(&self) -> Subscription<Msg> {
         let scan_sub = match self.scan_progress {
-            0 => Subscription::none(),
-            _ => ip_scan::subscription(),
+            255 => Subscription::none(),
+            _ => views::ip_scan::subscription(),
         };
         let kb_sub = keyboard::on_key_press(Msg::key_press);
         Subscription::batch([scan_sub, kb_sub])
     }
-}
-// The subscription function
-
-// async fn ping_ip(ip: IpAddr) -> anyhow::Result<()> {
-//     let timeout = Some(Duration::from_millis(1000));
-//     ping::ping(ip, timeout, None, None, None, None)?;
-//     Ok(())
-// }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Task {
-    #[serde(default = "Uuid::new_v4")]
-    id: Uuid,
-    description: String,
-    completed: bool,
-
-    #[serde(skip)]
-    #[allow(unused)]
-    state: TaskState,
-}
-
-#[derive(Debug, Clone)]
-pub enum TaskState {
-    Idle,
-    Editing,
-}
-
-impl Default for TaskState {
-    fn default() -> Self {
-        Self::Idle
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum TaskMessage {
-    Completed(bool),
-    Edit,
-    DescriptionEdited(String),
-    FinishEdition,
-    Delete,
 }
