@@ -1,5 +1,8 @@
 // #![allow(unused_imports, unused)]
+#![feature(addr_parse_ascii)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use std::net::IpAddr;
 
 use iced::keyboard::{Key, Modifiers, key::Named};
 use iced::widget::image::Handle;
@@ -54,6 +57,12 @@ pub enum Msg {
     Testing,
     Config(ChangeConfig),
     Adaptor(NetworkAdapter),
+    TcpIpPort(String),
+    TcpIpAddress(String),
+    TcpConnectionToggle,
+    UdpIpPort(String),
+    UdpIpAddress(String),
+    UdpConnectionToggle,
 }
 impl Msg {
     fn key_press(any_key: Key, mods: Modifiers) -> Option<Msg> {
@@ -120,6 +129,18 @@ impl IpScannerApp {
                 self.scan_progress += 1;
                 self.ips.push(res);
             }
+            Msg::TcpIpAddress(ip) => self.tcp_ip_address = ip,
+            Msg::TcpIpPort(port) => self.tcp_ip_port = port,
+            Msg::TcpConnectionToggle if self.tcp_connection.is_none() => {
+                self.tcp_connection = IpAddr::parse_ascii(self.tcp_ip_address.as_bytes()).ok()
+            }
+            Msg::TcpConnectionToggle => self.tcp_connection = None,
+            Msg::UdpIpAddress(ip) => self.udp_ip_address = ip,
+            Msg::UdpIpPort(port) => self.udp_ip_port = port,
+            Msg::UdpConnectionToggle if self.udp_connection.is_none() => {
+                self.udp_connection = IpAddr::parse_ascii(self.udp_ip_address.as_bytes()).ok()
+            }
+            Msg::UdpConnectionToggle => self.udp_connection = None,
             Msg::TabChanged(tab) => self.tab = tab,
             Msg::BeginScan => self.scan_progress = 0,
             Msg::ScanComplete => self.scan_progress = 255,
@@ -134,8 +155,8 @@ impl IpScannerApp {
         let tabs = self.render_tabs();
         let col = match self.tab {
             ModeTab::IpScan => views::ip_scan::view(self),
-            ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(),
-            ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(),
+            ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(self),
+            ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(self),
             _ => views::settings::view(self),
         };
         let content = column![tabs, col].height(Fill).spacing(20).max_width(800);

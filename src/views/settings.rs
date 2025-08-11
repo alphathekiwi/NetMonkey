@@ -3,28 +3,30 @@ use std::net::IpAddr;
 
 use crate::Msg;
 use crate::adaptor::{NetworkAdapter, get_network_adapters};
+use crate::components::adaptors::TextInputDropdown;
 use crate::views::ip_scan::ScannedIp;
 use iced::Alignment::Center;
-use iced::Length::Fixed;
-use iced::widget::text::LineHeight::Absolute;
-use iced::widget::{Column, column, combo_box, pick_list, row, text, text_input, vertical_slider};
+use iced::widget::{Column, column, combo_box, row, text, text_input, vertical_slider};
+use iced_core::Widget;
 use serde::{Deserialize, Serialize};
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
-    let none = None::<&NetworkAdapter>;
+    let items = app
+        .adaptors
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<String>>();
+    let ip_sel: TextInputDropdown<String, Vec<String>, Msg, iced::Theme> = TextInputDropdown::new(
+        items,
+        app.config.starting_ip.to_string(),
+        |s| Msg::Config(ChangeConfig::StartingIp(s)),
+        |s| Msg::Config(ChangeConfig::StartingIp(s)),
+    )
+    .size(24.into());
     column![
         text("Settings").size(24),
         text("Starting IP").size(16),
-        row![
-            text_input("Starting IP", &app.config.starting_ip.to_string())
-                .on_input(|s| Msg::Config(ChangeConfig::StartingIp(s)))
-                .size(24),
-            // button("▼").on_press(Msg::Adaptors)
-            pick_list(app.adaptors.clone(), none, Msg::Adaptor)
-                .width(Fixed(32.0))
-                .text_line_height(Absolute(32.into())),
-            // combo_box(&app.dropdown, "Select Adapter", none, Msg::Adaptor) // .width(Fixed(32.0))
-        ],
+        iced::Element::from(ip_sel),
         text("Subnet Mask").size(16),
         row![
             vertical_slider(1..=32, app.config.subnet_mask, Msg::subnet_mask),
@@ -33,11 +35,9 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
             text_input("Subnet Mask", &app.config.subnet_mask_long()).size(24),
         ],
         text("Ports List").size(16),
-        row![
-            text_input("Ports List", &app.config.ports_to_string())
-                .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
-                .size(24),
-        ],
+        text_input("Ports List", &app.config.ports_to_string())
+            .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
+            .size(24),
     ]
     .align_x(Center)
     .spacing(10)
@@ -46,10 +46,21 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
 #[derive(Debug)]
 pub struct IpScannerApp {
     pub tab: ModeTab,
-    pub scan_progress: u8,
-
-    pub adaptors: Vec<NetworkAdapter>,
+    // IP Scanner
     pub ips: Vec<ScannedIp>,
+    pub scan_progress: u8,
+    // TCP Connection
+    pub tcp_ip_port: String,
+    pub tcp_ip_address: String,
+    pub tcp_connection: Option<IpAddr>,
+    pub tcp_history: Vec<String>,
+    // UDP Connection
+    pub udp_ip_port: String,
+    pub udp_ip_address: String,
+    pub udp_connection: Option<IpAddr>,
+    pub udp_history: Vec<String>,
+    // Settings
+    pub adaptors: Vec<NetworkAdapter>,
     pub config: AppConfig,
     pub dropdown: combo_box::State<NetworkAdapter>,
 }
@@ -182,6 +193,16 @@ impl Default for IpScannerApp {
             adaptors: Vec::new(),
             dropdown: combo_box::State::new(Vec::new()),
             config,
+
+            tcp_ip_port: String::new(),
+            tcp_ip_address: String::new(),
+            tcp_connection: None,
+            tcp_history: Vec::new(),
+
+            udp_connection: None,
+            udp_history: Vec::new(),
+            udp_ip_port: String::new(),
+            udp_ip_address: String::new(),
         }
     }
 }

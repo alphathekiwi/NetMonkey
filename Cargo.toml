@@ -28,6 +28,7 @@ if-addrs = "0.7"
 mac_address2 = { version = "2.0.2", features = ["serde"] }
 anyhow = "1.0.98"
 iced_core = "0.13.2"
+iced_widget = "0.13.4"
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

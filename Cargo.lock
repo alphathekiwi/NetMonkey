@@ -2058,6 +2058,7 @@ dependencies = [
  "iced",
  "iced_core",
  "iced_test",
+ "iced_widget",
  "if-addrs",
  "image",
  "mac_address2",
