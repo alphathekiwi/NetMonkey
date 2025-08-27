@@ -70,7 +70,7 @@ The network adapter functionality can be used programmatically:
 ```rust
 let adapters = get_network_adapters();
 for adapter in adapters {
-    println!("Interface: {} - IP: {} - MAC: {}", 
+    println!("Interface: {} - IP: {} - MAC: {}",
              adapter.name, adapter.ip_address, adapter.mac_address);
 }
 ```

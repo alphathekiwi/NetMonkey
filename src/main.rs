@@ -13,6 +13,7 @@ use iced::{Center, Element, Fill, Subscription, Task as Command, Theme, keyboard
 use image::ImageFormat;
 
 use crate::adaptor::NetworkAdapter;
+use crate::adaptor::get_network_adapters;
 use crate::views::ip_scan::ScannedIp;
 use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
 
@@ -47,7 +48,7 @@ pub fn hero_image() -> Image<Handle> {
 
 #[derive(Debug, Clone)]
 pub enum Msg {
-    Loaded(Option<(AppConfig, Vec<NetworkAdapter>)>),
+    Loaded((AppConfig, Vec<NetworkAdapter>)),
     TabChanged(ModeTab),
     FocusMove { shift: bool },
     WinSize(Mode),
@@ -97,7 +98,15 @@ impl IpScannerApp {
     fn initialize() -> (Self, Command<Msg>) {
         (
             Self::default(),
-            Command::perform(AppConfig::load(), Msg::Loaded),
+            Command::perform(
+                async {
+                    (
+                        AppConfig::load().unwrap_or_default(),
+                        get_network_adapters(),
+                    )
+                },
+                Msg::Loaded,
+            ),
         )
     }
 
@@ -124,7 +133,7 @@ impl IpScannerApp {
         }
         // All Msgs that should update the state
         match msg {
-            Msg::Loaded(Some((c, a))) => self.loaded(c, a),
+            Msg::Loaded((c, a)) => self.loaded(c, a),
             Msg::PingResult(res) => {
                 self.scan_progress += 1;
                 self.ips.push(res);

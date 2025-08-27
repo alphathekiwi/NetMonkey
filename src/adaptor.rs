@@ -8,6 +8,15 @@ pub struct NetworkAdapter {
     pub ip_address: String,
     pub mac_address: String,
 }
+impl Default for NetworkAdapter {
+    fn default() -> Self {
+        Self {
+            name: String::from("default"),
+            ip_address: String::from("192.168.1.1"),
+            mac_address: String::from(""),
+        }
+    }
+}
 impl Display for NetworkAdapter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}] {}", self.ip_address, self.name)
@@ -15,9 +24,11 @@ impl Display for NetworkAdapter {
 }
 pub fn get_network_adapters() -> Vec<NetworkAdapter> {
     let mut adapters = Vec::new();
-
     match get_if_addrs() {
         Ok(interfaces) => {
+            if interfaces.is_empty() {
+                println!("No interfaces found")
+            }
             for interface in interfaces {
                 if !interface.is_loopback() {
                     let ip_address = match interface.ip() {

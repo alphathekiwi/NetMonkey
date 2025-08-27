@@ -2,12 +2,11 @@ use std::fs::read_to_string;
 use std::net::IpAddr;
 
 use crate::Msg;
-use crate::adaptor::{NetworkAdapter, get_network_adapters};
-use crate::components::adaptors::TextInputDropdown;
+use crate::adaptor::NetworkAdapter;
+use crate::components::dropdown::TextInputDropdown;
 use crate::views::ip_scan::ScannedIp;
 use iced::Alignment::Center;
-use iced::widget::{Column, column, combo_box, row, text, text_input, vertical_slider};
-use iced_core::Widget;
+use iced::widget::{Column, column, row, text, text_input, vertical_slider};
 use serde::{Deserialize, Serialize};
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
@@ -16,6 +15,7 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
         .iter()
         .map(ToString::to_string)
         .collect::<Vec<String>>();
+    println!("{items:?}");
     let ip_sel: TextInputDropdown<String, Vec<String>, Msg, iced::Theme> = TextInputDropdown::new(
         items,
         app.config.starting_ip.to_string(),
@@ -62,12 +62,10 @@ pub struct IpScannerApp {
     // Settings
     pub adaptors: Vec<NetworkAdapter>,
     pub config: AppConfig,
-    pub dropdown: combo_box::State<NetworkAdapter>,
 }
 impl IpScannerApp {
     pub fn loaded(&mut self, c: AppConfig, a: Vec<NetworkAdapter>) {
         self.config = c;
-        self.dropdown = combo_box::State::new(a.clone());
         self.adaptors = a;
     }
 }
@@ -78,10 +76,20 @@ impl IpScannerApp {
 // };
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppConfig {
-    pub starting_ip: IpAddr,
+    pub starting_ip: String,
     pub subnet_mask: u8,
     pub ports: Vec<u16>,
     pub forced_ip_mode: ForcedIPMode,
+}
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            starting_ip: String::from("192.168.1.1"),
+            subnet_mask: 24,
+            ports: vec![80, 443],
+            forced_ip_mode: ForcedIPMode::Any,
+        }
+    }
 }
 impl AppConfig {
     pub fn ports_to_string(&self) -> String {
@@ -109,19 +117,16 @@ impl AppConfig {
     }
     pub fn update(&mut self, change: ChangeConfig) {
         match change {
-            ChangeConfig::StartingIp(ip) => self.starting_ip = ip.parse().unwrap(),
-            ChangeConfig::SubnetMask(mask) => self.subnet_mask = mask.parse().unwrap(),
+            ChangeConfig::StartingIp(ip) => self.starting_ip = ip,
+            ChangeConfig::SubnetMask(mask) => self.subnet_mask = mask.parse().unwrap_or_default(),
             ChangeConfig::Ports(ports) => {
-                self.ports = ports.split(',').map(|p| p.parse().unwrap()).collect()
+                self.ports = ports.split(',').filter_map(|p| p.parse().ok()).collect()
             }
             ChangeConfig::ForcedIPMode(mode) => self.forced_ip_mode = mode.into(),
         }
     }
-    pub async fn load() -> Option<(Self, Vec<NetworkAdapter>)> {
-        serde_json::from_str(&read_to_string("data/config.json").ok()?)
-            .ok()
-            .map(|v| (v, get_network_adapters()))
-        // .map(|v| (v, Vec::new()))
+    pub fn load() -> Option<Self> {
+        serde_json::from_str(&read_to_string("data/config.json").ok()?).ok()
     }
     pub fn save(&self) -> anyhow::Result<()> {
         let json = serde_json::to_string_pretty(self)?;
@@ -180,18 +185,12 @@ impl From<&ModeTab> for String {
 /// Default implementation for IpScannerApp
 impl Default for IpScannerApp {
     fn default() -> Self {
-        let config = AppConfig {
-            starting_ip: IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 1)),
-            subnet_mask: 24,
-            ports: vec![80, 443],
-            forced_ip_mode: ForcedIPMode::Any,
-        };
+        let config = AppConfig::default();
         Self {
             tab: ModeTab::IpScan,
             scan_progress: 255,
             ips: Vec::new(),
-            adaptors: Vec::new(),
-            dropdown: combo_box::State::new(Vec::new()),
+            adaptors: vec![NetworkAdapter::default()],
             config,
 
             tcp_ip_port: String::new(),
