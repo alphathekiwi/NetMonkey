@@ -3,7 +3,7 @@ use std::net::IpAddr;
 
 use crate::Msg;
 use crate::adaptor::NetworkAdapter;
-use crate::components::dropdown::TextInputDropdown;
+use crate::components::TextInputDropdown;
 use crate::views::ip_scan::ScannedIp;
 use iced::Alignment::Center;
 use iced::widget::{Column, column, row, text, text_input, vertical_slider};
