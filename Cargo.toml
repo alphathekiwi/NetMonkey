@@ -16,6 +16,7 @@ iced = { version = "^0.13.1", features = [
     "tokio",
     "debug",
     "image",
+    "canvas",
 ] } # , "time-travel"
 image = "0.24.9"
 

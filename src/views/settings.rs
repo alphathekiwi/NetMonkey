@@ -3,44 +3,83 @@ use std::net::IpAddr;
 
 use crate::Msg;
 use crate::adaptor::NetworkAdapter;
-use crate::components::TextInputDropdown;
+
+use crate::components::{LabelWithHint, SubnetSlider, TextInputDropdown};
+use crate::theme::NetMonkeyTheme;
 use crate::views::ip_scan::ScannedIp;
 use iced::Alignment::Center;
-use iced::widget::{Column, column, row, text, text_input, vertical_slider};
+use iced::Element;
+use iced::widget::{column, scrollable, text, text_input};
+use iced_widget::{horizontal_rule, pick_list};
 use serde::{Deserialize, Serialize};
 
-pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
+pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
     let items = app
         .adaptors
         .iter()
         .map(ToString::to_string)
         .collect::<Vec<String>>();
     println!("{items:?}");
-    let ip_sel: TextInputDropdown<String, Vec<String>, Msg, iced::Theme> = TextInputDropdown::new(
+    let ip_sel: TextInputDropdown<_, _, Msg, iced::Theme> = TextInputDropdown::new(
         items,
         app.config.starting_ip.to_string(),
         |s| Msg::Config(ChangeConfig::StartingIp(s)),
         |s| Msg::Config(ChangeConfig::StartingIp(s)),
     )
-    .size(24.into());
-    column![
-        text("Settings").size(24),
-        text("Starting IP").size(16),
-        iced::Element::from(ip_sel),
-        text("Subnet Mask").size(16),
-        row![
-            vertical_slider(1..=32, app.config.subnet_mask, Msg::subnet_mask),
-            // .on_input(|s| Msg::Config(ChangeConfig::SubnetMask(s)))
-            // .size(24)
-            text_input("Subnet Mask", &app.config.subnet_mask_long()).size(24),
-        ],
-        text("Ports List").size(16),
-        text_input("Ports List", &app.config.ports_to_string())
-            .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
-            .size(24),
-    ]
-    .align_x(Center)
-    .spacing(10)
+    .text_size(24);
+    let subnet_slider = SubnetSlider::new(app.config.subnet_mask, Msg::subnet_mask)
+        .text_size(24.0)
+        .height(45.0)
+        .into_element();
+
+    // Create theme selector dropdown
+    let theme_options = [
+        NetMonkeyTheme::Dark,
+        NetMonkeyTheme::Light,
+        NetMonkeyTheme::HighContrast,
+    ];
+    let theme_selector = pick_list(theme_options, Some(app.config.theme), |theme| {
+        Msg::Config(ChangeConfig::Theme(theme))
+    })
+    .text_size(24);
+
+    scrollable(
+        column![
+            text("Network Configuration").size(22),
+            horizontal_rule(2),
+            text("Starting IP").size(18),
+            iced::Element::from(ip_sel),
+            text("Subnet Mask").size(18),
+            subnet_slider,
+            LabelWithHint::new(
+                "Ports List",
+                "Comma-separated list of ports to scan (e.g., 80, 443, 22)"
+            )
+            .text_size(18.0)
+            .theme(app.config.theme)
+            .into_element(),
+            text_input("Ports List", &app.config.ports_to_string())
+                .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
+                .size(24),
+            text("Appearance").size(22),
+            horizontal_rule(2),
+            LabelWithHint::new("Theme", app.config.theme.description())
+                .text_size(18.0)
+                .theme(app.config.theme)
+                .into_element(),
+            iced::Element::from(theme_selector),
+        ]
+        .align_x(Center)
+        .spacing(12)
+        .padding(20),
+    )
+    .height(iced::Length::Fill)
+    .direction(iced::widget::scrollable::Direction::Vertical(
+        iced::widget::scrollable::Scrollbar::new()
+            .width(8)
+            .scroller_width(8),
+    ))
+    .into()
 }
 
 #[derive(Debug)]
@@ -80,6 +119,7 @@ pub struct AppConfig {
     pub subnet_mask: u8,
     pub ports: Vec<u16>,
     pub forced_ip_mode: ForcedIPMode,
+    pub theme: NetMonkeyTheme,
 }
 impl Default for AppConfig {
     fn default() -> Self {
@@ -88,6 +128,7 @@ impl Default for AppConfig {
             subnet_mask: 24,
             ports: vec![80, 443],
             forced_ip_mode: ForcedIPMode::Any,
+            theme: NetMonkeyTheme::Dark,
         }
     }
 }
@@ -123,6 +164,7 @@ impl AppConfig {
                 self.ports = ports.split(',').filter_map(|p| p.parse().ok()).collect()
             }
             ChangeConfig::ForcedIPMode(mode) => self.forced_ip_mode = mode.into(),
+            ChangeConfig::Theme(theme) => self.theme = theme,
         }
     }
     pub fn load() -> Option<Self> {
@@ -212,4 +254,5 @@ pub enum ChangeConfig {
     SubnetMask(String),
     Ports(String),
     ForcedIPMode(usize),
+    Theme(NetMonkeyTheme),
 }

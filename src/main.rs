@@ -19,6 +19,7 @@ use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
 
 mod adaptor;
 mod components;
+mod theme;
 mod views;
 
 pub fn main() -> iced::Result {
@@ -92,6 +93,7 @@ impl IpScannerApp {
             .font(ICON_FONT)
             .window(window)
             .subscription(Self::subscription)
+            .theme(Self::theme)
             .run_with(Self::initialize)
     }
 
@@ -160,12 +162,16 @@ impl IpScannerApp {
         cmd
     }
 
+    fn theme(&self) -> Theme {
+        self.config.theme.to_extended_iced_theme()
+    }
+
     fn view(&self) -> Element<'_, Msg> {
         let tabs = self.render_tabs();
         let col = match self.tab {
-            ModeTab::IpScan => views::ip_scan::view(self),
-            ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(self),
-            ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(self),
+            ModeTab::IpScan => views::ip_scan::view(self).into(),
+            ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(self).into(),
+            ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(self).into(),
             _ => views::settings::view(self),
         };
         let content = column![tabs, col].height(Fill).spacing(20).max_width(800);
