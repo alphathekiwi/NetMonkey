@@ -2,15 +2,14 @@ use std::fs::read_to_string;
 use std::net::IpAddr;
 
 use crate::Msg;
-use crate::adaptor::NetworkAdapter;
-
-use crate::components::{LabelWithHint, SubnetSlider, TextInputDropdown};
-use crate::theme::NetMonkeyTheme;
 use crate::views::ip_scan::ScannedIp;
 use iced::Alignment::Center;
 use iced::Element;
 use iced::widget::{column, scrollable, text, text_input};
 use iced_widget::{horizontal_rule, pick_list};
+use net_monkey_components::{LabelWithHint, SubnetSlider, TextInputDropdown};
+use net_monkey_core::NetworkAdapter;
+use net_monkey_theme::NetMonkeyTheme;
 use serde::{Deserialize, Serialize};
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {

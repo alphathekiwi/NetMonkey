@@ -2119,16 +2119,64 @@ dependencies = [
  "iced_core",
  "iced_test",
  "iced_widget",
- "if-addrs",
  "image",
- "mac_address2",
+ "net_monkey_components",
+ "net_monkey_core",
+ "net_monkey_theme",
  "serde",
  "serde_json",
  "surge-ping",
  "tokio",
  "tracing-subscriber",
- "uuid",
  "winresource",
+]
+
+[[package]]
+name = "net_monkey_components"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_core",
+ "iced_widget",
+ "net_monkey_core",
+ "net_monkey_theme",
+ "serde",
+]
+
+[[package]]
+name = "net_monkey_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "directories",
+ "futures",
+ "if-addrs",
+ "mac_address2",
+ "serde",
+ "surge-ping",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "net_monkey_examples"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_core",
+ "iced_widget",
+ "net_monkey_components",
+ "net_monkey_core",
+ "net_monkey_theme",
+]
+
+[[package]]
+name = "net_monkey_theme"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_core",
+ "serde",
 ]
 
 [[package]]

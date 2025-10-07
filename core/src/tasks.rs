@@ -2,15 +2,15 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Task {
+pub struct Task {
     #[serde(default = "Uuid::new_v4")]
-    id: Uuid,
-    description: String,
-    completed: bool,
+    pub id: Uuid,
+    pub description: String,
+    pub completed: bool,
 
     #[serde(skip)]
     #[allow(unused)]
-    state: TaskState,
+    pub state: TaskState,
 }
 
 #[derive(Debug, Clone)]

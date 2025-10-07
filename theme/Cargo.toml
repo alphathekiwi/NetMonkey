@@ -1,0 +1,12 @@
+[package]
+name = "net_monkey_theme"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+# Use workspace dependencies
+iced.workspace = true
+iced_core.workspace = true
+serde.workspace = true
+
+# Theme-specific dependencies for color manipulation

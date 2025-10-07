@@ -1,10 +1,10 @@
 {
   "starting_ip": "192.168.1.1",
-  "subnet_mask": 24,
+  "subnet_mask": 20,
   "ports": [
     80,
     443
   ],
   "forced_ip_mode": "Any",
-  "theme": "Dark"
+  "theme": "HighContrast"
 }

@@ -12,14 +12,11 @@ use iced::window::{Mode, Settings, icon::from_file_data};
 use iced::{Center, Element, Fill, Subscription, Task as Command, Theme, keyboard, window};
 use image::ImageFormat;
 
-use crate::adaptor::NetworkAdapter;
-use crate::adaptor::get_network_adapters;
 use crate::views::ip_scan::ScannedIp;
 use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
+use net_monkey_core::{NetworkAdapter, get_network_adapters};
+use net_monkey_theme::NetMonkeyTheme;
 
-mod adaptor;
-mod components;
-mod theme;
 mod views;
 
 pub fn main() -> iced::Result {

@@ -1,0 +1,31 @@
+[package]
+name = "net_monkey_examples"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+# Use workspace dependencies
+iced.workspace = true
+iced_core.workspace = true
+iced_widget.workspace = true
+
+# Use other workspace crates
+net_monkey_components = { path = "../components" }
+net_monkey_core = { path = "../core" }
+net_monkey_theme = { path = "../theme" }
+
+[[bin]]
+name = "text_input_demo"
+path = "src/text_input_demo.rs"
+
+[[bin]]
+name = "subnet_slider_demo"
+path = "src/subnet_slider_demo.rs"
+
+[[bin]]
+name = "dropdown_demo"
+path = "src/dropdown_demo.rs"
+
+[[bin]]
+name = "all_components_demo"
+path = "src/all_components_demo.rs"

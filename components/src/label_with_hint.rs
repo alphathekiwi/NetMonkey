@@ -1,6 +1,6 @@
-use crate::theme::NetMonkeyTheme;
 use iced::widget::{container, row, text, tooltip};
 use iced::{Color, Element, Length, Padding, Renderer, Theme};
+use net_monkey_theme::NetMonkeyTheme;
 
 /// A text label component with an optional help hint icon that shows a tooltip on hover.
 ///

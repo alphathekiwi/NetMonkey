@@ -1,0 +1,16 @@
+[package]
+name = "net_monkey_components"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+# Use workspace dependencies
+iced.workspace = true
+iced_core.workspace = true
+iced_widget.workspace = true
+serde.workspace = true
+
+# Components might need core for types
+net_monkey_core = { path = "../core" }
+# Components need theme for styling
+net_monkey_theme = { path = "../theme" }
