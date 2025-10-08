@@ -80,7 +80,7 @@ where
             width: Length::Fill,
             text_size: 14.0,
             padding: Padding::new(8.0),
-            theme: NetMonkeyTheme::Dark,
+            theme: NetMonkeyTheme::Loaded("Dark".to_string()),
         }
     }
 
@@ -136,7 +136,7 @@ where
                 .height(Length::Fixed(text_size))
                 .padding(Padding::new(text_size * 0.1))
                 .style(move |_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(colors.primary)),
+                    background: Some(iced::Background::Color(colors.primary.into())),
                     border: iced::Border {
                         color: Color::from_rgb(
                             colors.primary.r * 0.75,
@@ -156,10 +156,10 @@ where
                 container(text(hint_text).size(12.0).color(colors.text))
                     .padding(8.0)
                     .style(move |_theme: &Theme| container::Style {
-                        text_color: Some(colors.text),
-                        background: Some(iced::Background::Color(colors.menu)),
+                        text_color: Some(colors.text.into()),
+                        background: Some(iced::Background::Color(colors.menu.into())),
                         border: iced::Border {
-                            color: colors.primary,
+                            color: colors.primary.into(),
                             width: 1.5,
                             radius: 6.0.into(),
                         },
@@ -178,13 +178,13 @@ where
                 .width(self.width)
                 .padding(self.padding)
                 .style(move |_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(colors.background)),
+                    background: Some(iced::Background::Color(colors.background.into())),
                     border: iced::Border {
-                        color: colors.border,
+                        color: colors.border.into(),
                         width: 1.0,
                         radius: 4.0.into(),
                     },
-                    text_color: Some(colors.text),
+                    text_color: Some(colors.text.into()),
                     shadow: iced::Shadow::default(),
                 })
                 .into()
@@ -194,13 +194,13 @@ where
                 .width(self.width)
                 .padding(self.padding)
                 .style(move |_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(colors.background)),
+                    background: Some(iced::Background::Color(colors.background.into())),
                     border: iced::Border {
-                        color: colors.border,
+                        color: colors.border.into(),
                         width: 1.0,
                         radius: 4.0.into(),
                     },
-                    text_color: Some(colors.text),
+                    text_color: Some(colors.text.into()),
                     shadow: iced::Shadow::default(),
                 })
                 .into()

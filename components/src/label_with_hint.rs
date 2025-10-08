@@ -63,7 +63,7 @@ impl LabelWithHint {
             text_size: 14.0,
             padding: Padding::new(0.0),
             text_color: None,
-            theme: NetMonkeyTheme::Dark,
+            theme: NetMonkeyTheme::Loaded("Dark".to_string()),
         }
     }
 
@@ -132,7 +132,7 @@ impl LabelWithHint {
                 .height(Length::Fixed(text_size))
                 .padding(Padding::new(text_size * 0.1))
                 .style(move |_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(colors.primary)),
+                    background: Some(iced::Background::Color(colors.primary.into())),
                     border: iced::Border {
                         color: Color::from_rgb(
                             colors.primary.r * 0.75,
@@ -152,10 +152,10 @@ impl LabelWithHint {
                 container(text(hint_text).size(12.0).color(colors.text))
                     .padding(8.0)
                     .style(move |_theme: &Theme| container::Style {
-                        text_color: Some(colors.text),
-                        background: Some(iced::Background::Color(colors.menu)),
+                        text_color: Some(colors.text.into()),
+                        background: Some(iced::Background::Color(colors.menu.into())),
                         border: iced::Border {
-                            color: colors.primary,
+                            color: colors.primary.into(),
                             width: 1.5,
                             radius: 6.0.into(),
                         },
@@ -184,7 +184,7 @@ impl LabelWithHint {
                     background: None,
                     border: iced::Border::default(),
                     shadow: iced::Shadow::default(),
-                    text_color: Some(colors.text),
+                    text_color: Some(colors.text.into()),
                 })
                 .into()
         } else {
@@ -197,7 +197,7 @@ impl LabelWithHint {
                     background: None,
                     border: iced::Border::default(),
                     shadow: iced::Shadow::default(),
-                    text_color: Some(colors.text),
+                    text_color: Some(colors.text.into()),
                 })
                 .into()
         }

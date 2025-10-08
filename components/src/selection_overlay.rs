@@ -55,25 +55,12 @@ where
         let pick_list_style =
             <Theme as Catalog>::style(theme, &self.class, iced::widget::pick_list::Status::Active);
 
-        let input_appearance = iced::widget::text_input::Style {
-            background: pick_list_style.background,
-            border: Border {
-                color: Color::from_rgb(0.7, 0.7, 0.7),
-                width: 1.0,
-                radius: iced::border::Radius::new(4.0),
-            },
-            icon: pick_list_style.text_color,
-            value: pick_list_style.text_color,
-            placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-            selection: Color::from_rgb(0.0, 0.5, 1.0),
-        };
-
         // Draw dropdown background with shadow
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
                 border: Border {
-                    color: Color::from_rgb(0.7, 0.7, 0.7),
+                    color: pick_list_style.border.color,
                     width: 1.0,
                     radius: iced::border::Radius::new(4.0),
                 },
@@ -83,7 +70,7 @@ where
                     blur_radius: 4.0,
                 },
             },
-            input_appearance.background,
+            pick_list_style.background,
         );
 
         // Draw dropdown items
@@ -110,13 +97,24 @@ where
                         border: Border::default(),
                         shadow: iced_core::Shadow::default(),
                     },
-                    iced_core::Background::Color(Color::from_rgb(0.9, 0.95, 1.0)),
+                    {
+                        let item_bg_color = match pick_list_style.background {
+                            iced_core::Background::Color(color) => Color {
+                                r: color.r * 0.98,
+                                g: color.g * 0.98,
+                                b: color.b * 1.05,
+                                a: color.a,
+                            },
+                            _ => Color::from_rgb(0.9, 0.95, 1.0),
+                        };
+                        iced_core::Background::Color(item_bg_color)
+                    },
                 );
             }
 
             let text_color = match is_hovered {
                 true => Color::BLACK,
-                false => input_appearance.value,
+                false => pick_list_style.text_color,
             };
 
             // Draw item text

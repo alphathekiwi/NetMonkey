@@ -2,28 +2,25 @@ use std::fs::read_to_string;
 use std::net::IpAddr;
 
 use crate::Msg;
-use crate::views::ip_scan::ScannedIp;
+
 use iced::Alignment::Center;
 use iced::Element;
+use iced::Length::Fill;
 use iced::widget::{column, scrollable, text, text_input};
-use iced_widget::{horizontal_rule, pick_list};
+use iced_widget::{button, horizontal_rule, pick_list, row};
 use net_monkey_components::{LabelWithHint, SubnetSlider, TextInputDropdown};
-use net_monkey_core::NetworkAdapter;
-use net_monkey_theme::NetMonkeyTheme;
+use net_monkey_core::{NetworkAdapter, ScannedIp};
+use net_monkey_theme::{NetMonkeyTheme, ThemeManager};
 use serde::{Deserialize, Serialize};
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
-    let items = app
-        .adaptors
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>();
+    let items = app.adaptors.clone();
     println!("{items:?}");
     let ip_sel: TextInputDropdown<_, _, Msg, iced::Theme> = TextInputDropdown::new(
         items,
         app.config.starting_ip.to_string(),
         |s| Msg::Config(ChangeConfig::StartingIp(s)),
-        |s| Msg::Config(ChangeConfig::StartingIp(s)),
+        |s| Msg::Config(ChangeConfig::StartingIp(s.ip_address)),
     )
     .text_size(24);
     let subnet_slider = SubnetSlider::new(app.config.subnet_mask, Msg::subnet_mask)
@@ -32,15 +29,7 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
         .into_element();
 
     // Create theme selector dropdown
-    let theme_options = [
-        NetMonkeyTheme::Dark,
-        NetMonkeyTheme::Light,
-        NetMonkeyTheme::HighContrast,
-    ];
-    let theme_selector = pick_list(theme_options, Some(app.config.theme), |theme| {
-        Msg::Config(ChangeConfig::Theme(theme))
-    })
-    .text_size(24);
+    let theme_options = NetMonkeyTheme::all();
 
     scrollable(
         column![
@@ -55,7 +44,7 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
                 "Comma-separated list of ports to scan (e.g., 80, 443, 22)"
             )
             .text_size(18.0)
-            .theme(app.config.theme)
+            .theme(app.config.theme.clone())
             .into_element(),
             text_input("Ports List", &app.config.ports_to_string())
                 .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
@@ -64,15 +53,26 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
             horizontal_rule(2),
             LabelWithHint::new("Theme", app.config.theme.description())
                 .text_size(18.0)
-                .theme(app.config.theme)
+                .theme(app.config.theme.clone())
                 .into_element(),
-            iced::Element::from(theme_selector),
+            row![
+                pick_list(theme_options, Some(app.config.theme.clone()), |theme| {
+                    Msg::Config(ChangeConfig::Theme(theme))
+                })
+                .text_size(24)
+                .width(Fill),
+                button(text(String::from("Edit Theme")).width(Fill).center())
+                    .on_press(Msg::TabChanged(ModeTab::ThemeEdit))
+                    .width(Fill)
+                    .padding(8),
+            ]
+            .spacing(8),
         ]
         .align_x(Center)
         .spacing(12)
         .padding(20),
     )
-    .height(iced::Length::Fill)
+    .height(Fill)
     .direction(iced::widget::scrollable::Direction::Vertical(
         iced::widget::scrollable::Scrollbar::new()
             .width(8)
@@ -103,6 +103,9 @@ pub struct IpScannerApp {
 }
 impl IpScannerApp {
     pub fn loaded(&mut self, c: AppConfig, a: Vec<NetworkAdapter>) {
+        // Ensure default themes exist and cleanup temporary themes
+        ThemeManager::ensure_default_themes();
+        ThemeManager::cleanup_temporary_themes();
         self.config = c;
         self.adaptors = a;
     }
@@ -127,7 +130,7 @@ impl Default for AppConfig {
             subnet_mask: 24,
             ports: vec![80, 443],
             forced_ip_mode: ForcedIPMode::Any,
-            theme: NetMonkeyTheme::Dark,
+            theme: NetMonkeyTheme::Loaded("Dark".to_string()),
         }
     }
 }
@@ -163,16 +166,110 @@ impl AppConfig {
                 self.ports = ports.split(',').filter_map(|p| p.parse().ok()).collect()
             }
             ChangeConfig::ForcedIPMode(mode) => self.forced_ip_mode = mode.into(),
-            ChangeConfig::Theme(theme) => self.theme = theme,
+            ChangeConfig::Theme(theme) => {
+                self.theme = theme;
+            }
+            ChangeConfig::ColorChange(color_type, hex_value) => {
+                // Color changes now modify the current theme directly
+                if let Some(color) = hex_to_color(&hex_value) {
+                    // Create a modified theme based on current theme
+                    let mut current_colors = self.theme.colors();
+                    let serializable_color = color.into();
+
+                    match color_type {
+                        ColorType::Background => current_colors.background = serializable_color,
+                        ColorType::Menu => current_colors.menu = serializable_color,
+                        ColorType::SubMenu => current_colors.sub_menu = serializable_color,
+                        ColorType::Text => current_colors.text = serializable_color,
+                        ColorType::TextSecondary => {
+                            current_colors.text_secondary = serializable_color
+                        }
+                        ColorType::Primary => current_colors.primary = serializable_color,
+                        ColorType::Success => current_colors.success = serializable_color,
+                        ColorType::Warning => current_colors.warning = serializable_color,
+                        ColorType::Danger => current_colors.danger = serializable_color,
+                        ColorType::Border => current_colors.border = serializable_color,
+                        ColorType::BorderFocused => {
+                            current_colors.border_focused = serializable_color
+                        }
+                        ColorType::BorderHover => current_colors.border_hover = serializable_color,
+                        ColorType::BorderDisabled => {
+                            current_colors.border_disabled = serializable_color
+                        }
+                        ColorType::Active => current_colors.active = serializable_color,
+                        ColorType::Hover => current_colors.hover = serializable_color,
+                    }
+
+                    // Save the modified theme as a temporary theme
+                    use net_monkey_theme::{ThemeDefinition, ThemeManager};
+                    use std::time::{SystemTime, UNIX_EPOCH};
+
+                    let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+
+                    let temp_theme = ThemeDefinition {
+                        name: format!("editing_{timestamp}"),
+                        description: "Temporary theme being edited".to_string(),
+                        colors: current_colors,
+                        is_dark: current_colors.background.r < 0.5,
+                    };
+
+                    if ThemeManager::save_theme(&temp_theme).is_ok() {
+                        self.theme = NetMonkeyTheme::Loaded(temp_theme.name);
+                    }
+                }
+            }
         }
     }
     pub fn load() -> Option<Self> {
-        serde_json::from_str(&read_to_string("data/config.json").ok()?).ok()
+        let config_path = Self::config_file_path();
+        serde_json::from_str(&read_to_string(config_path).ok()?).ok()
     }
     pub fn save(&self) -> anyhow::Result<()> {
+        let config_path = Self::config_file_path();
+        let config_dir = std::path::Path::new(&config_path).parent().unwrap();
+        std::fs::create_dir_all(config_dir)?;
         let json = serde_json::to_string_pretty(self)?;
-        std::fs::write("data/config.json", json)?;
+        std::fs::write(config_path, json)?;
         Ok(())
+    }
+
+    /// Get the config file path based on build mode
+    fn config_file_path() -> String {
+        #[cfg(debug_assertions)]
+        {
+            // In debug mode, find the workspace root and use app/data/config.json
+            if let Ok(current_dir) = std::env::current_dir() {
+                let mut path = current_dir;
+                // Look for workspace Cargo.toml (contains [workspace]) to identify workspace root
+                loop {
+                    let cargo_toml = path.join("Cargo.toml");
+                    if cargo_toml.exists()
+                        && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+                        && content.contains("[workspace]")
+                    {
+                        break;
+                    }
+                    if !path.pop() {
+                        // Fallback if we can't find workspace root
+                        return "app/data/config.json".to_string();
+                    }
+                }
+                path.push("app");
+                path.push("data");
+                path.push("config.json");
+                path.to_string_lossy().to_string()
+            } else {
+                "app/data/config.json".to_string()
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            // In release mode, use current working directory
+            "data/config.json".to_string()
+        }
     }
 }
 impl Drop for AppConfig {
@@ -206,6 +303,7 @@ pub enum ModeTab {
     UDPclient,
     UDPserver,
     Settings,
+    ThemeEdit,
 }
 
 /// Basic to string conversion for ModeTab
@@ -218,6 +316,7 @@ impl From<&ModeTab> for String {
             ModeTab::UDPclient => "UDP Client",
             ModeTab::UDPserver => "UDP Server",
             ModeTab::Settings => "Settings",
+            ModeTab::ThemeEdit => "Edit Theme",
         }
         .to_string()
     }
@@ -226,6 +325,9 @@ impl From<&ModeTab> for String {
 /// Default implementation for IpScannerApp
 impl Default for IpScannerApp {
     fn default() -> Self {
+        // Ensure default themes exist and cleanup temporary themes
+        ThemeManager::ensure_default_themes();
+        ThemeManager::cleanup_temporary_themes();
         let config = AppConfig::default();
         Self {
             tab: ModeTab::IpScan,
@@ -254,4 +356,46 @@ pub enum ChangeConfig {
     Ports(String),
     ForcedIPMode(usize),
     Theme(NetMonkeyTheme),
+    ColorChange(ColorType, String),
+}
+
+#[derive(Debug, Clone)]
+pub enum ColorType {
+    Background,
+    Menu,
+    SubMenu,
+    Text,
+    TextSecondary,
+    Primary,
+    Success,
+    Warning,
+    Danger,
+    Border,
+    BorderFocused,
+    BorderHover,
+    BorderDisabled,
+    Active,
+    Hover,
+}
+
+// Helper function to parse hex color
+fn hex_to_color(hex: &str) -> Option<iced::Color> {
+    if !hex.starts_with('#') || hex.len() != 7 {
+        return None;
+    }
+
+    let hex = &hex[1..];
+    if let (Ok(r), Ok(g), Ok(b)) = (
+        u8::from_str_radix(&hex[0..2], 16),
+        u8::from_str_radix(&hex[2..4], 16),
+        u8::from_str_radix(&hex[4..6], 16),
+    ) {
+        Some(iced::Color::from_rgb(
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+        ))
+    } else {
+        None
+    }
 }

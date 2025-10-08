@@ -1,21 +1,20 @@
 // #![allow(unused_imports, unused)]
-#![feature(addr_parse_ascii)]
+#![feature(addr_parse_ascii, result_option_map_or_default)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::net::IpAddr;
 
 use iced::keyboard::{Key, Modifiers, key::Named};
 use iced::widget::image::Handle;
-use iced::widget::{Image, Row, button, center, column, text};
+use iced::widget::{Image, Row, button, center, column, container, text};
 use iced::widget::{button::Status, image as iced_image};
 use iced::window::{Mode, Settings, icon::from_file_data};
-use iced::{Center, Element, Fill, Subscription, Task as Command, Theme, keyboard, window};
+use iced::{Center, Color, Element, Fill, Subscription, Task as Command, Theme, keyboard, window};
 use image::ImageFormat;
 
-use crate::views::ip_scan::ScannedIp;
 use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
-use net_monkey_core::{NetworkAdapter, get_network_adapters};
-use net_monkey_theme::NetMonkeyTheme;
+use net_monkey_core::{NetworkAdapter, ScannedIp, get_network_adapters};
+use net_monkey_theme::helpers;
 
 mod views;
 
@@ -48,7 +47,9 @@ pub fn hero_image() -> Image<Handle> {
 pub enum Msg {
     Loaded((AppConfig, Vec<NetworkAdapter>)),
     TabChanged(ModeTab),
-    FocusMove { shift: bool },
+    FocusMove {
+        shift: bool,
+    },
     WinSize(Mode),
     BeginScan,
     ScanComplete,
@@ -62,6 +63,11 @@ pub enum Msg {
     UdpIpPort(String),
     UdpIpAddress(String),
     UdpConnectionToggle,
+    ColorEdit {
+        color_type: crate::views::settings::ColorType,
+        hex_value: String,
+    },
+    SaveTheme,
 }
 impl Msg {
     fn key_press(any_key: Key, mods: Modifiers) -> Option<Msg> {
@@ -154,40 +160,118 @@ impl IpScannerApp {
             Msg::ScanComplete => self.scan_progress = 255,
             Msg::Config(change) => self.config.update(change),
             Msg::Adaptor(a) => self.config.update(ChangeConfig::StartingIp(a.ip_address)),
+            Msg::ColorEdit {
+                color_type,
+                hex_value,
+            } => self
+                .config
+                .update(ChangeConfig::ColorChange(color_type, hex_value)),
+            Msg::SaveTheme => {
+                // Save current theme as a new permanent theme
+                use net_monkey_theme::{NetMonkeyTheme, ThemeDefinition, ThemeManager};
+                use std::time::{SystemTime, UNIX_EPOCH};
+
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
+                let current_colors = self.config.theme.clone().colors();
+                let theme_def = ThemeDefinition {
+                    name: format!("Custom Theme {timestamp}"),
+                    description: "User created custom theme".to_string(),
+                    colors: current_colors,
+                    is_dark: current_colors.background.r < 0.5,
+                };
+                if let Err(e) = ThemeManager::save_theme(&theme_def) {
+                    eprintln!("Failed to save theme: {e}");
+                } else {
+                    println!("Theme saved successfully: {}", theme_def.name);
+                    // Switch to the newly saved theme
+                    self.config.theme = NetMonkeyTheme::Loaded(theme_def.name.clone());
+                }
+            }
             _ => {}
         }
         cmd
     }
 
     fn theme(&self) -> Theme {
-        self.config.theme.to_extended_iced_theme()
+        self.config.theme.clone().to_extended_iced_theme()
     }
 
     fn view(&self) -> Element<'_, Msg> {
+        let theme_colors = self.config.theme.clone().colors();
         let tabs = self.render_tabs();
         let col = match self.tab {
             ModeTab::IpScan => views::ip_scan::view(self).into(),
             ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(self).into(),
             ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(self).into(),
+            ModeTab::ThemeEdit => views::theme_edit::view(self),
             _ => views::settings::view(self),
         };
-        let content = column![tabs, col].height(Fill).spacing(20).max_width(800);
-        // Create a container with a background image let background_image = Handle::from_bytes(APP_BACKGROUND); // Assuming APP_BACKGROUND is defined
-        // let bg = hero_image();
-        // let background = Container::new(content)
-        //     .style(|v| iced::widget::container::Style::default().background(bg))
-        //     .padding(40);
-        center(content).padding(40).into()
+
+        // Create themed content container
+        let content = helpers::menu_container(
+            column![tabs, col].height(Fill).spacing(20),
+            self.config.theme.clone(),
+        );
+
+        // Main background container with theme colors
+        let background = container(center(content).padding(40))
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(theme_colors.background.into())),
+                ..Default::default()
+            })
+            .height(Fill)
+            .width(Fill);
+
+        background.into()
     }
 
     fn render_tabs(&self) -> Row<'_, Msg> {
+        let theme_colors = self.config.theme.clone().colors();
         let buttons = TABS.iter().map(|tab| {
             let active = &self.tab == tab;
-            let button_style = move |theme: &Theme, status: Status| match active {
-                true => button::primary(theme, Status::Hovered),
-                false => button::primary(theme, status),
+            let button_style = move |theme: &Theme, status: Status| {
+                let base_style = button::primary(theme, status);
+                match (active, status) {
+                    (true, _) => button::Style {
+                        background: Some(iced::Background::Color(theme_colors.active.into())),
+                        text_color: theme_colors.text.into(),
+                        border: iced::Border {
+                            color: theme_colors.border_focused.into(),
+                            width: 2.0,
+                            radius: 4.0.into(),
+                        },
+                        ..base_style
+                    },
+                    (false, Status::Hovered) => button::Style {
+                        background: Some(iced::Background::Color(theme_colors.hover.into())),
+                        text_color: theme_colors.text.into(),
+                        border: iced::Border {
+                            color: theme_colors.border_hover.into(),
+                            width: 1.0,
+                            radius: 4.0.into(),
+                        },
+                        ..base_style
+                    },
+                    _ => button::Style {
+                        background: Some(iced::Background::Color(theme_colors.sub_menu.into())),
+                        text_color: theme_colors.text.into(),
+                        border: iced::Border {
+                            color: theme_colors.border.into(),
+                            width: 1.0,
+                            radius: 4.0.into(),
+                        },
+                        ..base_style
+                    },
+                }
             };
-            let label = text(String::from(tab)).width(Fill).center();
+            let label = text(String::from(tab))
+                .width(Fill)
+                .center()
+                .color(Color::from(theme_colors.text));
             button(label)
                 .style(button_style)
                 .on_press(Msg::TabChanged(tab.clone()))

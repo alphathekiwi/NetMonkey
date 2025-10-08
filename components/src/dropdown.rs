@@ -407,17 +407,32 @@ where
             background: pick_list_style.background,
             border: Border {
                 color: if state.is_focused {
-                    Color::from_rgb(0.0, 0.5, 1.0)
+                    pick_list_style.border.color
                 } else {
-                    Color::from_rgb(0.7, 0.7, 0.7)
+                    Color {
+                        r: pick_list_style.border.color.r * 0.7,
+                        g: pick_list_style.border.color.g * 0.7,
+                        b: pick_list_style.border.color.b * 0.7,
+                        a: pick_list_style.border.color.a,
+                    }
                 },
                 width: 1.0,
                 radius: iced::border::Radius::new(4.0),
             },
             icon: pick_list_style.text_color,
             value: pick_list_style.text_color,
-            placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-            selection: Color::from_rgb(0.0, 0.5, 1.0),
+            placeholder: Color {
+                r: pick_list_style.text_color.r * 0.5,
+                g: pick_list_style.text_color.g * 0.5,
+                b: pick_list_style.text_color.b * 0.5,
+                a: pick_list_style.text_color.a,
+            },
+            selection: Color {
+                r: pick_list_style.text_color.r,
+                g: pick_list_style.text_color.g * 0.8,
+                b: 1.0,
+                a: pick_list_style.text_color.a,
+            },
         };
 
         renderer.fill_quad(
@@ -448,7 +463,12 @@ where
         };
 
         let text_color = match self.value.is_empty() && self.placeholder.is_some() {
-            true => Color::from_rgb(0.5, 0.5, 0.5),
+            true => Color {
+                r: input_appearance.value.r * 0.5,
+                g: input_appearance.value.g * 0.5,
+                b: input_appearance.value.b * 0.5,
+                a: input_appearance.value.a,
+            },
             false => input_appearance.value,
         };
 
@@ -494,11 +514,21 @@ where
         }
 
         // Draw dropdown button
+        let button_bg_color = match pick_list_style.background {
+            iced_core::Background::Color(color) => Color {
+                r: color.r * 0.95,
+                g: color.g * 0.95,
+                b: color.b * 0.95,
+                a: color.a,
+            },
+            _ => Color::from_rgb(0.9, 0.9, 0.9),
+        };
+
         let button_style = iced::widget::button::Style {
-            background: Some(iced_core::Background::Color(Color::from_rgb(0.9, 0.9, 0.9))),
-            text_color: Color::from_rgb(0.3, 0.3, 0.3),
+            background: Some(iced_core::Background::Color(button_bg_color)),
+            text_color: pick_list_style.text_color,
             border: Border {
-                color: Color::from_rgb(0.7, 0.7, 0.7),
+                color: pick_list_style.border.color,
                 width: 1.0,
                 radius: iced::border::Radius::new(4.0),
             },
@@ -556,7 +586,7 @@ where
                 renderer::Quad {
                     bounds: dropdown_bounds,
                     border: Border {
-                        color: Color::from_rgb(0.7, 0.7, 0.7),
+                        color: pick_list_style.border.color,
                         width: 1.0,
                         radius: iced::border::Radius::new(4.0),
                     },
@@ -583,13 +613,24 @@ where
                         renderer::Quad {
                             bounds: item_bounds,
                             border: Border {
-                                color: Color::from_rgb(0.7, 0.7, 0.7),
+                                color: pick_list_style.border.color,
                                 width: 1.0,
                                 radius: iced::border::Radius::new(4.0),
                             },
                             shadow: iced_core::Shadow::default(),
                         },
-                        iced_core::Background::Color(Color::from_rgb(0.9, 0.95, 1.0)),
+                        {
+                            let item_bg_color = match pick_list_style.background {
+                                iced_core::Background::Color(color) => Color {
+                                    r: color.r * 0.98,
+                                    g: color.g * 0.98,
+                                    b: color.b * 1.05,
+                                    a: color.a,
+                                },
+                                _ => Color::from_rgb(0.9, 0.95, 1.0),
+                            };
+                            iced_core::Background::Color(item_bg_color)
+                        },
                     );
                 }
 

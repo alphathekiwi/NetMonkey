@@ -2177,6 +2177,7 @@ dependencies = [
  "iced",
  "iced_core",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

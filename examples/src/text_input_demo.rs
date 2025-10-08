@@ -10,20 +10,11 @@ pub enum Message {
     SubnetChanged(String),
 }
 
+#[derive(Default)]
 pub struct TextInputDemo {
     ip_address: String,
     port: String,
     subnet: String,
-}
-
-impl Default for TextInputDemo {
-    fn default() -> Self {
-        Self {
-            ip_address: String::new(),
-            port: String::new(),
-            subnet: String::new(),
-        }
-    }
 }
 
 impl TextInputDemo {
@@ -42,7 +33,7 @@ impl TextInputDemo {
         Task::none()
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let ip_input = text_input_with_hint(
             self.ip_address.clone(),
             "Enter IP Address",

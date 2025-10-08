@@ -8,5 +8,6 @@ edition.workspace = true
 iced.workspace = true
 iced_core.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 
 # Theme-specific dependencies for color manipulation

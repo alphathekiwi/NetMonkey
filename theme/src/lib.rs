@@ -7,8 +7,10 @@
 pub mod colors;
 
 // Re-export the main theme types for convenience
-pub use colors::{NetMonkeyColors, NetMonkeyTheme};
+pub use colors::{
+    NetMonkeyColors, NetMonkeyTheme, SerializableColor, ThemeDefinition, ThemeManager, helpers,
+};
 
 // Re-export commonly used Iced types that themes work with
-pub use iced::theme::{palette::Extended, Palette};
+pub use iced::theme::{Palette, palette::Extended};
 pub use iced::{Color, Theme};

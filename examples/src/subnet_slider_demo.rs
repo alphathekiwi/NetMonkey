@@ -43,14 +43,10 @@ impl SubnetSliderDemo {
             text("Adjust the subnet mask using the slider below:").size(16),
             slider,
             text(format!("Current Subnet Mask: /{}", self.subnet_mask)).size(18),
-            text(format!("Hosts per network: {}", host_count)).size(14),
-            text(format!("Number of subnets: {}", network_count)).size(14),
+            text(format!("Hosts per network: {host_count}")).size(14),
+            text(format!("Number of subnets: {network_count}")).size(14),
             text("Subnet mask in dotted decimal:").size(14),
-            text(format!(
-                "{}",
-                subnet_mask_to_dotted_decimal(self.subnet_mask)
-            ))
-            .size(14),
+            text(subnet_mask_to_dotted_decimal(self.subnet_mask).to_string()).size(14),
         ]
         .spacing(15)
         .padding(20);

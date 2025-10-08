@@ -12,4 +12,4 @@ pub use adaptor::{NetworkAdapter, get_network_adapters};
 pub use tasks::{Task, TaskMessage, TaskState};
 
 // Re-export scanner functionality
-pub use scanner::*;
+pub use scanner::{ScanMessage, ScannedIp, create_network_scanner, scan_network_async};

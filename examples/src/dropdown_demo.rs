@@ -63,7 +63,7 @@ impl DropdownDemo {
             text("Current Selection:").size(18),
             container(text(&self.selected_value).size(16))
                 .padding(10)
-                .style(|theme: &iced::Theme| container::Style {
+                .style(|_theme: &iced::Theme| container::Style {
                     background: Some(iced::Background::Color(iced::Color::from_rgb(
                         0.1, 0.1, 0.15,
                     ))),

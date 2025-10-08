@@ -1,48 +1,82 @@
 use iced::Alignment::Center;
-use iced::Color;
 use iced::Length::{Fill, FillPortion};
 use iced::widget::{Column, button, column, row, text, text_input};
+use net_monkey_components::TextInputDropdown;
 
 use crate::Msg;
 use crate::views::settings::IpScannerApp;
+use net_monkey_theme::helpers;
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
-    let connected = match app.tcp_connection {
-        None => text("Connect").size(24),
-        Some(_) => text("Disconnect").size(24),
+    let theme_colors = app.config.theme.colors();
+
+    let (connected_text, connected_color) = match app.tcp_connection {
+        None => ("Connect", theme_colors.primary),
+        Some(_) => ("Disconnect", theme_colors.danger),
     };
+
+    let connected = text(connected_text).size(24).color(connected_color);
+
     let history = app.tcp_history.join("\n");
-    let items = vec![
+
+    // Determine history text color based on connection status
+    let history_color = match app.tcp_connection {
+        None => theme_colors.text_secondary,
+        Some(_) => theme_colors.success,
+    };
+
+    let items = app
+        .ips
+        .iter()
+        .map(|scanned| scanned.ip.to_string())
+        .collect::<Vec<String>>();
+    let ip_sel: TextInputDropdown<_, _, Msg, iced::Theme> = TextInputDropdown::new(
+        items,
+        app.tcp_connection.map_or_default(|c| c.to_string()),
+        Msg::TcpIpAddress,
+        Msg::TcpIpAddress,
+    );
+    // Create themed connection controls container
+    let connection_controls = helpers::themed_container(
         row![
-            text_input("Ip Address", &app.tcp_ip_address)
-                .on_input(Msg::TcpIpAddress)
-                .size(24)
-                .width(FillPortion(2))
-                .padding(8),
-            text_input("Port", &app.tcp_ip_port)
-                .on_input(Msg::TcpIpPort)
-                .size(24)
-                .width(FillPortion(1))
-                .padding(8),
-            button(connected)
-                .on_press(Msg::TcpConnectionToggle)
-                .width(FillPortion(1))
-                .padding(8),
-        ]
-        .spacing(10)
-        .into(),
-        row![
-            column![
-                text(history)
-                    .color(Color::from_rgb(1.0, 0.5, 0.5))
-                    .height(Fill),
-            ],
-            column![
-                text("TCP Client/Server").size(24),
-                text_input("Ip Address", "").size(24),
+            ip_sel.text_size(24),
+            row![
+                text_input("Port", &app.tcp_ip_port)
+                    .on_input(Msg::TcpIpPort)
+                    .size(24)
+                    .width(FillPortion(1))
+                    .padding(8),
+                button(connected)
+                    .on_press(Msg::TcpConnectionToggle)
+                    .width(FillPortion(1))
+                    .padding(8),
             ]
+            .spacing(10),
         ]
-        .into(),
+        .spacing(10),
+        app.config.theme.clone(),
+        app.tcp_connection.is_some(),
+        false,
+    );
+
+    // Create themed history container
+    let history_container = helpers::sub_menu_container(
+        column![text(history).color(history_color).height(Fill),],
+        app.config.theme.clone(),
+    );
+
+    // Create themed info panel
+    let info_panel = helpers::menu_container(
+        column![
+            text("TCP Client/Server").size(24).color(theme_colors.text),
+            text_input("Ip Address", "").size(24),
+        ],
+        app.config.theme.clone(),
+    );
+
+    let items = vec![
+        connection_controls.into(),
+        row![history_container, info_panel].spacing(10).into(),
     ];
 
     Column::with_children(items).align_x(Center).spacing(10)

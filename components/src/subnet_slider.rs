@@ -170,12 +170,16 @@ where
         });
         frame.fill(&main_background, theme.palette().background);
 
-        // Draw grey border
+        // Draw border using theme colors - use a muted border color
+        let border_color = Color {
+            r: theme.palette().text.r * 0.4,
+            g: theme.palette().text.g * 0.4,
+            b: theme.palette().text.b * 0.4,
+            a: theme.palette().text.a * 0.8,
+        };
         frame.stroke(
             &main_background,
-            Stroke::default()
-                .with_color(Color::from_rgb(0.7, 0.7, 0.7))
-                .with_width(1.0),
+            Stroke::default().with_color(border_color).with_width(1.0),
         );
 
         // Draw blue filled portion (progress) with rounded corners (inset by 1 pixel)
@@ -189,7 +193,7 @@ where
                     (corner_radius - 1.0_f32).max(0.0).into(),
                 );
             });
-            frame.fill(&fill_rect, Color::from_rgb(0.2, 0.6, 1.0));
+            frame.fill(&fill_rect, theme.palette().primary);
         }
 
         // Draw left text (dotted decimal) - adjust for white outline
