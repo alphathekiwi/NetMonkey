@@ -2,8 +2,6 @@
 #![feature(addr_parse_ascii, result_option_map_or_default)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::net::IpAddr;
-
 #[cfg(feature = "cosmic")]
 use cosmic::app::{Core, Settings, Task};
 #[cfg(feature = "cosmic")]
@@ -95,13 +93,19 @@ pub enum Msg {
     Testing,
     Config(ChangeConfig),
     Adaptor(NetworkAdapter),
-    TcpIpPort(String),
-    TcpIpAddress(String),
-    TcpConnectionToggle,
-    UdpIpPort(String),
-    UdpIpAddress(String),
-    UdpConnectionToggle,
     RefreshTheme,
+    // Tcp Stuff
+    // SendPacket,
+    // ConnectionToggle,
+    // CurrentPacket(String),
+    // ChangeIpPort(String),
+    // ChangeIpAddress(String),
+    // Udp Stuff
+    SendPacket,
+    ChangePacket(String),
+    ChangeIpPort(String),
+    ChangeIpAddress(String),
+    ConnectionToggle,
 }
 impl Msg {
     fn key_press(any_key: Key, mods: Modifiers) -> Option<Msg> {
@@ -233,27 +237,29 @@ impl IpScannerApp {
                 self.scan_progress += 1;
                 self.ips.push(res);
             }
-            Msg::TcpIpAddress(ip) => self.tcp_ip_address = ip,
-            Msg::TcpIpPort(port) => self.tcp_ip_port = port,
-            Msg::TcpConnectionToggle if self.tcp_connection.is_none() => {
-                self.tcp_connection = IpAddr::parse_ascii(self.tcp_ip_address.as_bytes()).ok()
-            }
-            Msg::TcpConnectionToggle => self.tcp_connection = None,
-            Msg::UdpIpAddress(ip) => self.udp_ip_address = ip,
-            Msg::UdpIpPort(port) => self.udp_ip_port = port,
-            Msg::UdpConnectionToggle if self.udp_connection.is_none() => {
-                self.udp_connection = IpAddr::parse_ascii(self.udp_ip_address.as_bytes()).ok()
-            }
-            Msg::UdpConnectionToggle => self.udp_connection = None,
+            Msg::ConnectionToggle
+            | Msg::SendPacket
+            | Msg::ChangePacket(_)
+            | Msg::ChangeIpAddress(_)
+            | Msg::ChangeIpPort(_) => self.update_client_server(msg, self.tab.clone()),
             Msg::TabChanged(tab) => self.tab = tab,
             Msg::BeginScan => self.scan_progress = 0,
             Msg::ScanComplete => self.scan_progress = 255,
             Msg::Config(change) => self.config.update(change),
             Msg::Adaptor(a) => self.config.update(ChangeConfig::StartingIp(a.ip_address)),
             Msg::RefreshTheme => {
-                // Theme provider is created on-demand, no need to refresh
                 println!("Theme refreshed");
             }
+            _ => {}
+        }
+    }
+
+    fn update_client_server(&mut self, msg: Msg, tab: ModeTab) {
+        match tab {
+            ModeTab::TCPclient => self.tcp_client.update(msg),
+            ModeTab::UDPclient => self.udp_client.update(msg),
+            ModeTab::TCPserver => self.tcp_server.update(msg),
+            ModeTab::UDPserver => self.udp_server.update(msg),
             _ => {}
         }
     }

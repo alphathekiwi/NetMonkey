@@ -67,7 +67,32 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
     .into()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
+pub struct ConnectionData {
+    pub ip_port: String,
+    pub ip_address: String,
+    pub current_packet: String,
+    pub connections: Vec<IpAddr>,
+    pub history: Vec<String>,
+}
+impl ConnectionData {
+    pub fn update(&mut self, msg: Msg) {
+        match msg {
+            Msg::ChangePacket(pak) => self.current_packet = pak,
+            Msg::ChangeIpAddress(ip) => self.ip_address = ip,
+            Msg::ChangeIpPort(port) => self.ip_port = port,
+            Msg::SendPacket => self.history.push(self.current_packet.clone()),
+            Msg::ConnectionToggle if self.connections.is_empty() => {
+                if let Ok(conn) = IpAddr::parse_ascii(self.ip_address.as_bytes()) {
+                    self.connections.push(conn)
+                }
+            }
+            Msg::ConnectionToggle => self.connections.clear(),
+            _ => {}
+        }
+    }
+}
+#[derive(Debug, Default)]
 pub struct IpScannerApp {
     #[cfg(feature = "cosmic")]
     pub core: cosmic::app::Core,
@@ -75,41 +100,13 @@ pub struct IpScannerApp {
     // IP Scanner
     pub ips: Vec<ScannedIp>,
     pub scan_progress: u8,
-    // TCP Connection
-    pub tcp_ip_port: String,
-    pub tcp_ip_address: String,
-    pub tcp_connection: Option<IpAddr>,
-    pub tcp_history: Vec<String>,
-    // UDP Connection
-    pub udp_ip_port: String,
-    pub udp_ip_address: String,
-    pub udp_connection: Option<IpAddr>,
-    pub udp_history: Vec<String>,
+    pub tcp_client: ConnectionData,
+    pub udp_client: ConnectionData,
+    pub tcp_server: ConnectionData,
+    pub udp_server: ConnectionData,
     // Settings
     pub adaptors: Vec<NetworkAdapter>,
     pub config: AppConfig,
-}
-
-impl Default for IpScannerApp {
-    fn default() -> Self {
-        Self {
-            #[cfg(feature = "cosmic")]
-            core: cosmic::app::Core::default(),
-            tab: ModeTab::IpScan,
-            ips: Vec::new(),
-            scan_progress: 0,
-            tcp_ip_port: String::from("80"),
-            tcp_ip_address: String::from("192.168.1.1"),
-            tcp_connection: None,
-            tcp_history: Vec::new(),
-            udp_ip_port: String::from("80"),
-            udp_ip_address: String::from("192.168.1.1"),
-            udp_connection: None,
-            udp_history: Vec::new(),
-            adaptors: Vec::new(),
-            config: AppConfig::default(),
-        }
-    }
 }
 
 impl IpScannerApp {
@@ -227,9 +224,10 @@ impl AppConfig {
         }
     }
 }
-impl Drop for AppConfig {
+// Implementation on App to prevent config being overwritten on load
+impl Drop for IpScannerApp {
     fn drop(&mut self) {
-        if let Err(e) = self.save() {
+        if let Err(e) = self.config.save() {
             eprintln!("Failed to save config: {e}");
         }
     }
@@ -250,8 +248,9 @@ impl From<usize> for ForcedIPMode {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ModeTab {
+    #[default]
     IpScan,
     TCPclient,
     TCPserver,

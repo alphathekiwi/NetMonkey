@@ -10,21 +10,18 @@ use net_monkey_theme::helpers;
 pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
     let theme_colors = app.config.theme_provider().colors();
 
-    let (connected_text, connected_color) = match app.udp_connection {
-        None => ("Connect".to_string(), theme_colors.primary_color()),
-        Some(connection) => (
-            format!("Disconnect from {connection}"),
-            theme_colors.danger_color(),
-        ),
+    let (connected_text, connected_color) = match app.udp_client.connections.is_empty() {
+        true => ("Connect".to_string(), theme_colors.primary_color()),
+        false => ("Disconnect".to_string(), theme_colors.danger_color()),
     };
 
     let connected = text(connected_text).color(connected_color);
-    let history = app.udp_history.join("\n");
+    let history = app.udp_client.history.join("\n");
 
     // Determine history text color based on connection status
-    let history_color = match app.udp_connection {
-        None => theme_colors.text_color(),
-        Some(_) => theme_colors.success_color(),
+    let history_color = match app.udp_client.connections.is_empty() {
+        true => theme_colors.text_color(),
+        false => theme_colors.success_color(),
     };
 
     let items = app
@@ -34,22 +31,25 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
         .collect::<Vec<String>>();
     let ip_sel: TextInputDropdown<_, _, Msg, iced::Theme> = TextInputDropdown::new(
         items,
-        app.udp_connection.map_or_default(|c| c.to_string()),
-        Msg::UdpIpAddress,
-        Msg::UdpIpAddress,
+        app.udp_client
+            .connections
+            .first()
+            .map_or_default(|c| c.to_string()),
+        Msg::ChangeIpAddress,
+        Msg::ChangeIpAddress,
     );
     // Create themed connection controls container
     let connection_controls = helpers::themed_container(
         row![
             ip_sel.text_size(24),
             row![
-                text_input("Port", &app.udp_ip_port)
-                    .on_input(Msg::UdpIpPort)
+                text_input("Port", &app.udp_client.ip_port)
+                    .on_input(Msg::ChangeIpPort)
                     .size(24)
                     .width(FillPortion(1))
                     .padding(8),
                 button(connected)
-                    .on_press(Msg::UdpConnectionToggle)
+                    .on_press(Msg::ConnectionToggle)
                     .width(FillPortion(1))
                     .padding(8),
             ]
