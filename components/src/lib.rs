@@ -11,13 +11,12 @@ pub mod text_input_with_hint;
 
 // Re-export commonly used components for convenience
 pub use dropdown::TextInputDropdown;
-pub use label_with_hint::{LabelWithHint, label_with_hint, themed_label_with_hint};
-pub use selection_overlay::*;
+pub use label_with_hint::LabelWithHint;
+pub use label_with_hint::{label_with_hint, themed_label_with_hint};
+pub use selection_overlay::MultiselectOverlay;
 pub use subnet_slider::SubnetSlider;
-pub use text_input_with_hint::{
-    TextInputWithHint, text_input_with_hint, themed_text_input_with_hint,
-};
-
+pub use text_input_with_hint::TextInputWithHint;
+pub use text_input_with_hint::{text_input_with_hint, themed_text_input_with_hint};
 // Re-export Iced types that components commonly use
 pub use iced::{Element, Theme};
 pub use iced_widget as widget;

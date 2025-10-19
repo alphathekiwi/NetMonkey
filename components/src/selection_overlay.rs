@@ -9,7 +9,7 @@ use iced_core::renderer;
 use iced_core::text::{self};
 use iced_core::{Border, Color, Padding, Rectangle, Size, Vector};
 
-pub struct DropdownOverlay<'a, T, Message, Theme, Renderer>
+pub struct MultiselectOverlay<'a, T, Message, Theme, Renderer>
 where
     T: ToString + PartialEq + Clone,
     Theme: Catalog + iced::widget::text_input::Catalog + iced::widget::button::Catalog,
@@ -29,7 +29,7 @@ where
 }
 
 impl<'a, T, Message, Theme, Renderer> overlay::Overlay<Message, Theme, Renderer>
-    for DropdownOverlay<'a, T, Message, Theme, Renderer>
+    for MultiselectOverlay<'a, T, Message, Theme, Renderer>
 where
     T: ToString + PartialEq + Clone,
     Theme: Catalog + iced::widget::text_input::Catalog + iced::widget::button::Catalog,

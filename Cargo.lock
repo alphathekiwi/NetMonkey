@@ -1186,6 +1186,29 @@ dependencies = [
 [[package]]
 name = "cosmic-text"
 version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da46a9d5a8905cc538a4a5bceb6a4510de7a51049c5588c0114efce102bcbbe8"
+dependencies = [
+ "bitflags 2.9.4",
+ "fontdb 0.16.2",
+ "log",
+ "rangemap",
+ "rustc-hash 1.1.0",
+ "rustybuzz",
+ "self_cell",
+ "smol_str",
+ "swash 0.2.6",
+ "sys-locale",
+ "ttf-parser 0.21.1",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "cosmic-text"
+version = "0.14.2"
 source = "git+https://github.com/pop-os/cosmic-text.git#cffdea2b334e7830a5fd6f95bf5e1784014442a8"
 dependencies = [
  "bitflags 2.9.4",
@@ -2672,7 +2695,7 @@ name = "iced_glyphon"
 version = "0.6.0"
 source = "git+https://github.com/pop-os/glyphon.git?tag=iced-0.14-dev#6ef9d12a20cfd0f7bdf38136a26ded9f7459ec8b"
 dependencies = [
- "cosmic-text 0.14.2",
+ "cosmic-text 0.14.2 (git+https://github.com/pop-os/cosmic-text.git)",
  "etagere",
  "lru",
  "rustc-hash 2.1.1",
@@ -2709,7 +2732,7 @@ source = "git+https://github.com/pop-os/libcosmic#76c1897d4d9a637c8aa4016483bf05
 dependencies = [
  "bitflags 2.9.4",
  "bytemuck",
- "cosmic-text 0.14.2",
+ "cosmic-text 0.14.2 (git+https://github.com/pop-os/cosmic-text.git)",
  "half",
  "iced_core 0.14.0-dev",
  "iced_futures 0.14.0-dev",
@@ -2804,7 +2827,7 @@ version = "0.14.0-dev"
 source = "git+https://github.com/pop-os/libcosmic#76c1897d4d9a637c8aa4016483bf05fec5f10ebd"
 dependencies = [
  "bytemuck",
- "cosmic-text 0.14.2",
+ "cosmic-text 0.14.2 (git+https://github.com/pop-os/cosmic-text.git)",
  "iced_graphics 0.14.0-dev",
  "kurbo 0.10.4",
  "log",
@@ -3776,6 +3799,7 @@ dependencies = [
 name = "net_monkey_components"
 version = "0.1.0"
 dependencies = [
+ "cosmic-text 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "iced 0.13.1",
  "iced_core 0.13.2",
  "iced_widget 0.13.4",
@@ -3806,6 +3830,7 @@ dependencies = [
  "iced 0.13.1",
  "iced_core 0.13.2",
  "iced_widget 0.13.4",
+ "libcosmic",
  "net_monkey_components",
  "net_monkey_core",
  "net_monkey_theme",

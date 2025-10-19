@@ -10,6 +10,9 @@ iced_core.workspace = true
 iced_widget.workspace = true
 serde.workspace = true
 
+# Text measurement with cosmic-text
+cosmic-text = "0.14"
+
 # Components might need core for types
 net_monkey_core = { path = "../core" }
 # Components need theme for styling

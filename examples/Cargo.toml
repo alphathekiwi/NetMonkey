@@ -8,6 +8,7 @@ edition.workspace = true
 iced.workspace = true
 iced_core.workspace = true
 iced_widget.workspace = true
+libcosmic.workspace = true
 
 # Use other workspace crates
 net_monkey_components = { path = "../components" }
@@ -29,3 +30,7 @@ path = "src/dropdown_demo.rs"
 [[bin]]
 name = "all_components_demo"
 path = "src/all_components_demo.rs"
+
+[[bin]]
+name = "text_measurement_comparison"
+path = "src/text_measurement_comparison.rs"
