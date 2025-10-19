@@ -9,6 +9,8 @@ members = [
 ]
 default-members = ["app"]
 
+
+
 # Shared dependencies across all workspace members
 [workspace.dependencies]
 iced = { version = "^0.13.1", features = ["tokio", "debug", "image", "canvas"] }
@@ -24,6 +26,9 @@ surge-ping = "0.8.2"
 if-addrs = "0.7"
 mac_address2 = { version = "2.0.2", features = ["serde"] }
 image = "0.24.9"
+
+# COSMIC desktop integration
+libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = ["winit", "tokio", "wgpu"] }
 
 [workspace.package]
 edition = "2024"

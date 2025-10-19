@@ -4,12 +4,38 @@
 
 use std::net::IpAddr;
 
+#[cfg(feature = "cosmic")]
+use cosmic::app::{Core, Settings, Task};
+#[cfg(feature = "cosmic")]
+use cosmic::iced_core::Size;
+#[cfg(feature = "cosmic")]
+use cosmic::keyboard::{Key, Modifiers, key::Named};
+#[cfg(feature = "cosmic")]
+use cosmic::widget::image::Handle;
+#[cfg(feature = "cosmic")]
+use cosmic::widget::{Image, Row, button, center, column, container, text};
+#[cfg(feature = "cosmic")]
+use cosmic::widget::{button::Status, image as iced_image};
+#[cfg(feature = "cosmic")]
+use cosmic::window::{Mode, icon::from_file_data};
+#[cfg(feature = "cosmic")]
+use cosmic::{ApplicationExt, Center, Color, Element, Fill, Subscription, keyboard, window};
+#[cfg(feature = "cosmic")]
+use image::ImageFormat;
+
+#[cfg(not(feature = "cosmic"))]
 use iced::keyboard::{Key, Modifiers, key::Named};
+#[cfg(not(feature = "cosmic"))]
 use iced::widget::image::Handle;
+#[cfg(not(feature = "cosmic"))]
 use iced::widget::{Image, Row, button, center, column, container, text};
+#[cfg(not(feature = "cosmic"))]
 use iced::widget::{button::Status, image as iced_image};
+#[cfg(not(feature = "cosmic"))]
 use iced::window::{Mode, Settings, icon::from_file_data};
-use iced::{Center, Color, Element, Fill, Subscription, Task as Command, Theme, keyboard, window};
+#[cfg(not(feature = "cosmic"))]
+use iced::{Center, Color, Element, Fill, Subscription, Task, Theme, keyboard};
+#[cfg(not(feature = "cosmic"))]
 use image::ImageFormat;
 
 use crate::views::settings::{AppConfig, ChangeConfig, IpScannerApp, ModeTab};
@@ -18,6 +44,20 @@ use net_monkey_theme::helpers;
 
 mod views;
 
+#[cfg(feature = "cosmic")]
+pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let settings = Settings::default().size(Size::new(500.0, 800.0));
+
+    let input = (
+        AppConfig::load().unwrap_or_default(),
+        get_network_adapters(),
+    );
+
+    cosmic::app::run::<IpScannerApp>(settings, input)?;
+    Ok(())
+}
+
+#[cfg(not(feature = "cosmic"))]
 pub fn main() -> iced::Result {
     // #[cfg(not(target_arch = "wasm32"))]
     // tracing_subscriber::fmt::init();
@@ -47,9 +87,7 @@ pub fn hero_image() -> Image<Handle> {
 pub enum Msg {
     Loaded((AppConfig, Vec<NetworkAdapter>)),
     TabChanged(ModeTab),
-    FocusMove {
-        shift: bool,
-    },
+    FocusMove { shift: bool },
     WinSize(Mode),
     BeginScan,
     ScanComplete,
@@ -63,11 +101,7 @@ pub enum Msg {
     UdpIpPort(String),
     UdpIpAddress(String),
     UdpConnectionToggle,
-    ColorEdit {
-        color_type: crate::views::settings::ColorType,
-        hex_value: String,
-    },
-    SaveTheme,
+    RefreshTheme,
 }
 impl Msg {
     fn key_press(any_key: Key, mods: Modifiers) -> Option<Msg> {
@@ -89,6 +123,46 @@ impl Msg {
     }
 }
 
+#[cfg(feature = "cosmic")]
+impl cosmic::Application for IpScannerApp {
+    type Executor = cosmic::executor::Default;
+    type Flags = (AppConfig, Vec<NetworkAdapter>);
+    type Message = Msg;
+    const APP_ID: &'static str = "com.system76.NetMonkey";
+
+    fn core(&self) -> &Core {
+        &self.core
+    }
+
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+
+    fn init(core: Core, (config, adapters): Self::Flags) -> (Self, Task<Self::Message>) {
+        let mut app = Self {
+            core,
+            config,
+            adapters,
+            ..Default::default()
+        };
+        app.loaded(config.clone(), adapters.clone());
+        (app, Task::none())
+    }
+
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+        self.update_common(message)
+    }
+
+    fn view(&self) -> Element<Self::Message> {
+        self.view_common()
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        self.subscription_common()
+    }
+}
+
+#[cfg(not(feature = "cosmic"))]
 impl IpScannerApp {
     fn run_with(window: Settings) -> Result<(), iced::Error> {
         iced::application("Net Monkey", Self::update, Self::view)
@@ -100,10 +174,11 @@ impl IpScannerApp {
             .run_with(Self::initialize)
     }
 
-    fn initialize() -> (Self, Command<Msg>) {
+    #[cfg(not(feature = "cosmic"))]
+    fn initialize() -> (Self, Task<Msg>) {
         (
             Self::default(),
-            Command::perform(
+            Task::perform(
                 async {
                     (
                         AppConfig::load().unwrap_or_default(),
@@ -114,11 +189,20 @@ impl IpScannerApp {
             ),
         )
     }
+}
 
-    fn update(&mut self, msg: Msg) -> Command<Msg> {
+impl IpScannerApp {
+    fn update_common(&mut self, msg: Msg) -> Task<Msg> {
+        #[cfg(feature = "cosmic")]
+        use cosmic::widget::{focus_next, focus_previous};
+        #[cfg(feature = "cosmic")]
+        use cosmic::window::{change_mode, get_latest};
+        #[cfg(not(feature = "cosmic"))]
         use iced::widget::{focus_next, focus_previous};
-        use window::{change_mode, get_latest};
-        // All Msgs that return a Command
+        #[cfg(not(feature = "cosmic"))]
+        use iced::window::{change_mode, get_latest};
+
+        // All Msgs that return a Task
         let cmd = match &msg {
             Msg::WinSize(mode) => {
                 let mode = *mode; // Copy the mode value
@@ -126,8 +210,14 @@ impl IpScannerApp {
             }
             Msg::FocusMove { shift: true } => focus_previous(),
             Msg::FocusMove { shift: false } => focus_next(),
-            _ => Command::none(),
+            _ => Task::none(),
         };
+
+        self.update_state(msg);
+        cmd
+    }
+
+    fn update_state(&mut self, msg: Msg) {
         // All Msgs that should print
         match &msg {
             Msg::BeginScan => println!("Starting scan..."),
@@ -160,67 +250,63 @@ impl IpScannerApp {
             Msg::ScanComplete => self.scan_progress = 255,
             Msg::Config(change) => self.config.update(change),
             Msg::Adaptor(a) => self.config.update(ChangeConfig::StartingIp(a.ip_address)),
-            Msg::ColorEdit {
-                color_type,
-                hex_value,
-            } => self
-                .config
-                .update(ChangeConfig::ColorChange(color_type, hex_value)),
-            Msg::SaveTheme => {
-                // Save current theme as a new permanent theme
-                use net_monkey_theme::{NetMonkeyTheme, ThemeDefinition, ThemeManager};
-                use std::time::{SystemTime, UNIX_EPOCH};
-
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                let current_colors = self.config.theme.clone().colors();
-                let theme_def = ThemeDefinition {
-                    name: format!("Custom Theme {timestamp}"),
-                    description: "User created custom theme".to_string(),
-                    colors: current_colors,
-                    is_dark: current_colors.background.r < 0.5,
-                };
-                if let Err(e) = ThemeManager::save_theme(&theme_def) {
-                    eprintln!("Failed to save theme: {e}");
-                } else {
-                    println!("Theme saved successfully: {}", theme_def.name);
-                    // Switch to the newly saved theme
-                    self.config.theme = NetMonkeyTheme::Loaded(theme_def.name.clone());
-                }
+            Msg::RefreshTheme => {
+                // Theme provider is created on-demand, no need to refresh
+                println!("Theme refreshed");
             }
             _ => {}
         }
-        cmd
     }
 
+    #[cfg(not(feature = "cosmic"))]
+    fn update(&mut self, msg: Msg) -> Task<Msg> {
+        self.update_common(msg)
+    }
+
+    #[cfg(not(feature = "cosmic"))]
     fn theme(&self) -> Theme {
-        self.config.theme.clone().to_extended_iced_theme()
+        self.config.theme_provider().to_iced_theme()
     }
 
+    #[cfg(not(feature = "cosmic"))]
     fn view(&self) -> Element<'_, Msg> {
-        let theme_colors = self.config.theme.clone().colors();
+        self.view_common()
+    }
+
+    fn subscription_common(&self) -> Subscription<Msg> {
+        let scan_sub = match self.scan_progress {
+            255 => Subscription::none(),
+            _ => views::ip_scan::subscription(),
+        };
+        let kb_sub = keyboard::on_key_press(Msg::key_press);
+        Subscription::batch([scan_sub, kb_sub])
+    }
+
+    #[cfg(not(feature = "cosmic"))]
+    fn subscription(&self) -> Subscription<Msg> {
+        self.subscription_common()
+    }
+
+    fn view_common(&self) -> Element<'_, Msg> {
+        let colors = self.config.theme_provider().colors();
         let tabs = self.render_tabs();
         let col = match self.tab {
             ModeTab::IpScan => views::ip_scan::view(self).into(),
             ModeTab::TCPclient | ModeTab::TCPserver => views::tcp_client::view(self).into(),
             ModeTab::UDPclient | ModeTab::UDPserver => views::udp_client::view(self).into(),
-            ModeTab::ThemeEdit => views::theme_edit::view(self),
             _ => views::settings::view(self),
         };
 
         // Create themed content container
-        let content = helpers::menu_container(
+        let content = helpers::themed_container(
             column![tabs, col].height(Fill).spacing(20),
-            self.config.theme.clone(),
+            &self.config.theme_provider(),
         );
 
         // Main background container with theme colors
         let background = container(center(content).padding(40))
             .style(move |_| container::Style {
-                background: Some(iced::Background::Color(theme_colors.background.into())),
+                background: Some(iced::Background::Color(colors.background_color())),
                 ..Default::default()
             })
             .height(Fill)
@@ -230,48 +316,59 @@ impl IpScannerApp {
     }
 
     fn render_tabs(&self) -> Row<'_, Msg> {
-        let theme_colors = self.config.theme.clone().colors();
+        let colors = self.config.theme_provider().colors();
         let buttons = TABS.iter().map(|tab| {
             let active = &self.tab == tab;
-            let button_style = move |theme: &Theme, status: Status| {
-                let base_style = button::primary(theme, status);
-                match (active, status) {
-                    (true, _) => button::Style {
-                        background: Some(iced::Background::Color(theme_colors.active.into())),
-                        text_color: theme_colors.text.into(),
-                        border: iced::Border {
-                            color: theme_colors.border_focused.into(),
-                            width: 2.0,
-                            radius: 4.0.into(),
-                        },
-                        ..base_style
+            let primary_color = colors.primary_color();
+            let background_color = colors.background_color();
+            let text_color = colors.text_color();
+
+            let button_style = move |_theme: &_, status: Status| match (active, status) {
+                (true, _) => button::Style {
+                    background: Some(iced::Background::Color(primary_color)),
+                    text_color: background_color,
+                    border: iced::Border {
+                        color: primary_color,
+                        width: 2.0,
+                        radius: 4.0.into(),
                     },
-                    (false, Status::Hovered) => button::Style {
-                        background: Some(iced::Background::Color(theme_colors.hover.into())),
-                        text_color: theme_colors.text.into(),
-                        border: iced::Border {
-                            color: theme_colors.border_hover.into(),
-                            width: 1.0,
-                            radius: 4.0.into(),
-                        },
-                        ..base_style
+                    ..Default::default()
+                },
+                (false, Status::Hovered) => button::Style {
+                    background: Some(iced::Background::Color(Color::from_rgba(
+                        primary_color.r,
+                        primary_color.g,
+                        primary_color.b,
+                        0.2,
+                    ))),
+                    text_color,
+                    border: iced::Border {
+                        color: primary_color,
+                        width: 1.0,
+                        radius: 4.0.into(),
                     },
-                    _ => button::Style {
-                        background: Some(iced::Background::Color(theme_colors.sub_menu.into())),
-                        text_color: theme_colors.text.into(),
-                        border: iced::Border {
-                            color: theme_colors.border.into(),
-                            width: 1.0,
-                            radius: 4.0.into(),
-                        },
-                        ..base_style
+                    ..Default::default()
+                },
+                _ => button::Style {
+                    background: Some(iced::Background::Color(Color::from_rgba(
+                        text_color.r,
+                        text_color.g,
+                        text_color.b,
+                        0.1,
+                    ))),
+                    text_color,
+                    border: iced::Border {
+                        color: Color::from_rgba(text_color.r, text_color.g, text_color.b, 0.3),
+                        width: 1.0,
+                        radius: 4.0.into(),
                     },
-                }
+                    ..Default::default()
+                },
             };
             let label = text(String::from(tab))
                 .width(Fill)
                 .center()
-                .color(Color::from(theme_colors.text));
+                .color(text_color);
             button(label)
                 .style(button_style)
                 .on_press(Msg::TabChanged(tab.clone()))
@@ -280,14 +377,5 @@ impl IpScannerApp {
                 .into()
         });
         Row::with_children(buttons).align_y(Center).spacing(10)
-    }
-
-    fn subscription(&self) -> Subscription<Msg> {
-        let scan_sub = match self.scan_progress {
-            255 => Subscription::none(),
-            _ => views::ip_scan::subscription(),
-        };
-        let kb_sub = keyboard::on_key_press(Msg::key_press);
-        Subscription::batch([scan_sub, kb_sub])
     }
 }

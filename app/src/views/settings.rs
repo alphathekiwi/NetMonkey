@@ -7,10 +7,10 @@ use iced::Alignment::Center;
 use iced::Element;
 use iced::Length::Fill;
 use iced::widget::{column, scrollable, text, text_input};
-use iced_widget::{button, horizontal_rule, pick_list, row};
+use iced_widget::{horizontal_rule, row};
 use net_monkey_components::{LabelWithHint, SubnetSlider, TextInputDropdown};
 use net_monkey_core::{NetworkAdapter, ScannedIp};
-use net_monkey_theme::{NetMonkeyTheme, ThemeManager};
+use net_monkey_theme::ThemeProvider;
 use serde::{Deserialize, Serialize};
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
@@ -28,9 +28,6 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
         .height(45.0)
         .into_element();
 
-    // Create theme selector dropdown
-    let theme_options = NetMonkeyTheme::all();
-
     scrollable(
         column![
             text("Network Configuration").size(22),
@@ -44,29 +41,18 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
                 "Comma-separated list of ports to scan (e.g., 80, 443, 22)"
             )
             .text_size(18.0)
-            .theme(app.config.theme.clone())
+            .theme(app.config.theme_provider())
             .into_element(),
             text_input("Ports List", &app.config.ports_to_string())
                 .on_input(|s| Msg::Config(ChangeConfig::Ports(s)))
                 .size(24),
             text("Appearance").size(22),
             horizontal_rule(2),
-            LabelWithHint::new("Theme", app.config.theme.description())
+            LabelWithHint::new("Theme", app.config.theme_provider().name())
                 .text_size(18.0)
-                .theme(app.config.theme.clone())
+                .theme(app.config.theme_provider())
                 .into_element(),
-            row![
-                pick_list(theme_options, Some(app.config.theme.clone()), |theme| {
-                    Msg::Config(ChangeConfig::Theme(theme))
-                })
-                .text_size(24)
-                .width(Fill),
-                button(text(String::from("Edit Theme")).width(Fill).center())
-                    .on_press(Msg::TabChanged(ModeTab::ThemeEdit))
-                    .width(Fill)
-                    .padding(8),
-            ]
-            .spacing(8),
+            row![text("COSMIC Theme (System-managed)").size(24).width(Fill),].spacing(8),
         ]
         .align_x(Center)
         .spacing(12)
@@ -83,6 +69,8 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Element<'a, Msg> {
 
 #[derive(Debug)]
 pub struct IpScannerApp {
+    #[cfg(feature = "cosmic")]
+    pub core: cosmic::app::Core,
     pub tab: ModeTab,
     // IP Scanner
     pub ips: Vec<ScannedIp>,
@@ -101,11 +89,31 @@ pub struct IpScannerApp {
     pub adaptors: Vec<NetworkAdapter>,
     pub config: AppConfig,
 }
+
+impl Default for IpScannerApp {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "cosmic")]
+            core: cosmic::app::Core::default(),
+            tab: ModeTab::IpScan,
+            ips: Vec::new(),
+            scan_progress: 0,
+            tcp_ip_port: String::from("80"),
+            tcp_ip_address: String::from("192.168.1.1"),
+            tcp_connection: None,
+            tcp_history: Vec::new(),
+            udp_ip_port: String::from("80"),
+            udp_ip_address: String::from("192.168.1.1"),
+            udp_connection: None,
+            udp_history: Vec::new(),
+            adaptors: Vec::new(),
+            config: AppConfig::default(),
+        }
+    }
+}
+
 impl IpScannerApp {
     pub fn loaded(&mut self, c: AppConfig, a: Vec<NetworkAdapter>) {
-        // Ensure default themes exist and cleanup temporary themes
-        ThemeManager::ensure_default_themes();
-        ThemeManager::cleanup_temporary_themes();
         self.config = c;
         self.adaptors = a;
     }
@@ -121,7 +129,6 @@ pub struct AppConfig {
     pub subnet_mask: u8,
     pub ports: Vec<u16>,
     pub forced_ip_mode: ForcedIPMode,
-    pub theme: NetMonkeyTheme,
 }
 impl Default for AppConfig {
     fn default() -> Self {
@@ -130,11 +137,14 @@ impl Default for AppConfig {
             subnet_mask: 24,
             ports: vec![80, 443],
             forced_ip_mode: ForcedIPMode::Any,
-            theme: NetMonkeyTheme::Loaded("Dark".to_string()),
         }
     }
 }
 impl AppConfig {
+    /// Get theme provider for this config
+    pub fn theme_provider(&self) -> ThemeProvider {
+        ThemeProvider::default()
+    }
     pub fn ports_to_string(&self) -> String {
         self.ports
             .iter()
@@ -166,61 +176,6 @@ impl AppConfig {
                 self.ports = ports.split(',').filter_map(|p| p.parse().ok()).collect()
             }
             ChangeConfig::ForcedIPMode(mode) => self.forced_ip_mode = mode.into(),
-            ChangeConfig::Theme(theme) => {
-                self.theme = theme;
-            }
-            ChangeConfig::ColorChange(color_type, hex_value) => {
-                // Color changes now modify the current theme directly
-                if let Some(color) = hex_to_color(&hex_value) {
-                    // Create a modified theme based on current theme
-                    let mut current_colors = self.theme.colors();
-                    let serializable_color = color.into();
-
-                    match color_type {
-                        ColorType::Background => current_colors.background = serializable_color,
-                        ColorType::Menu => current_colors.menu = serializable_color,
-                        ColorType::SubMenu => current_colors.sub_menu = serializable_color,
-                        ColorType::Text => current_colors.text = serializable_color,
-                        ColorType::TextSecondary => {
-                            current_colors.text_secondary = serializable_color
-                        }
-                        ColorType::Primary => current_colors.primary = serializable_color,
-                        ColorType::Success => current_colors.success = serializable_color,
-                        ColorType::Warning => current_colors.warning = serializable_color,
-                        ColorType::Danger => current_colors.danger = serializable_color,
-                        ColorType::Border => current_colors.border = serializable_color,
-                        ColorType::BorderFocused => {
-                            current_colors.border_focused = serializable_color
-                        }
-                        ColorType::BorderHover => current_colors.border_hover = serializable_color,
-                        ColorType::BorderDisabled => {
-                            current_colors.border_disabled = serializable_color
-                        }
-                        ColorType::Active => current_colors.active = serializable_color,
-                        ColorType::Hover => current_colors.hover = serializable_color,
-                    }
-
-                    // Save the modified theme as a temporary theme
-                    use net_monkey_theme::{ThemeDefinition, ThemeManager};
-                    use std::time::{SystemTime, UNIX_EPOCH};
-
-                    let timestamp = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-
-                    let temp_theme = ThemeDefinition {
-                        name: format!("editing_{timestamp}"),
-                        description: "Temporary theme being edited".to_string(),
-                        colors: current_colors,
-                        is_dark: current_colors.background.r < 0.5,
-                    };
-
-                    if ThemeManager::save_theme(&temp_theme).is_ok() {
-                        self.theme = NetMonkeyTheme::Loaded(temp_theme.name);
-                    }
-                }
-            }
         }
     }
     pub fn load() -> Option<Self> {
@@ -303,7 +258,6 @@ pub enum ModeTab {
     UDPclient,
     UDPserver,
     Settings,
-    ThemeEdit,
 }
 
 /// Basic to string conversion for ModeTab
@@ -316,36 +270,8 @@ impl From<&ModeTab> for String {
             ModeTab::UDPclient => "UDP Client",
             ModeTab::UDPserver => "UDP Server",
             ModeTab::Settings => "Settings",
-            ModeTab::ThemeEdit => "Edit Theme",
         }
         .to_string()
-    }
-}
-
-/// Default implementation for IpScannerApp
-impl Default for IpScannerApp {
-    fn default() -> Self {
-        // Ensure default themes exist and cleanup temporary themes
-        ThemeManager::ensure_default_themes();
-        ThemeManager::cleanup_temporary_themes();
-        let config = AppConfig::default();
-        Self {
-            tab: ModeTab::IpScan,
-            scan_progress: 255,
-            ips: Vec::new(),
-            adaptors: vec![NetworkAdapter::default()],
-            config,
-
-            tcp_ip_port: String::new(),
-            tcp_ip_address: String::new(),
-            tcp_connection: None,
-            tcp_history: Vec::new(),
-
-            udp_connection: None,
-            udp_history: Vec::new(),
-            udp_ip_port: String::new(),
-            udp_ip_address: String::new(),
-        }
     }
 }
 
@@ -355,47 +281,6 @@ pub enum ChangeConfig {
     SubnetMask(String),
     Ports(String),
     ForcedIPMode(usize),
-    Theme(NetMonkeyTheme),
-    ColorChange(ColorType, String),
-}
-
-#[derive(Debug, Clone)]
-pub enum ColorType {
-    Background,
-    Menu,
-    SubMenu,
-    Text,
-    TextSecondary,
-    Primary,
-    Success,
-    Warning,
-    Danger,
-    Border,
-    BorderFocused,
-    BorderHover,
-    BorderDisabled,
-    Active,
-    Hover,
 }
 
 // Helper function to parse hex color
-fn hex_to_color(hex: &str) -> Option<iced::Color> {
-    if !hex.starts_with('#') || hex.len() != 7 {
-        return None;
-    }
-
-    let hex = &hex[1..];
-    if let (Ok(r), Ok(g), Ok(b)) = (
-        u8::from_str_radix(&hex[0..2], 16),
-        u8::from_str_radix(&hex[2..4], 16),
-        u8::from_str_radix(&hex[4..6], 16),
-    ) {
-        Some(iced::Color::from_rgb(
-            r as f32 / 255.0,
-            g as f32 / 255.0,
-            b as f32 / 255.0,
-        ))
-    } else {
-        None
-    }
-}

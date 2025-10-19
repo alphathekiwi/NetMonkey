@@ -3,6 +3,10 @@ name = "net_monkey_theme"
 version = "0.1.0"
 edition.workspace = true
 
+[features]
+default = []
+cosmic = ["libcosmic", "palette"]
+
 [dependencies]
 # Use workspace dependencies
 iced.workspace = true
@@ -10,4 +14,8 @@ iced_core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
-# Theme-specific dependencies for color manipulation
+# Color manipulation (only needed for COSMIC integration)
+palette = { version = "0.7.6", optional = true }
+
+# COSMIC desktop integration (optional)
+libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = ["winit", "tokio", "wgpu"], optional = true }

@@ -8,11 +8,14 @@ use crate::views::settings::IpScannerApp;
 use net_monkey_theme::helpers;
 
 pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
-    let theme_colors = app.config.theme.colors();
+    let theme_colors = app.config.theme_provider().colors();
 
     let (connected_text, connected_color) = match app.udp_connection {
-        None => ("Connect".to_string(), theme_colors.primary),
-        Some(connection) => (format!("Disconnect from {connection}"), theme_colors.danger),
+        None => ("Connect".to_string(), theme_colors.primary_color()),
+        Some(connection) => (
+            format!("Disconnect from {connection}"),
+            theme_colors.danger_color(),
+        ),
     };
 
     let connected = text(connected_text).color(connected_color);
@@ -20,8 +23,8 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
 
     // Determine history text color based on connection status
     let history_color = match app.udp_connection {
-        None => theme_colors.text_secondary,
-        Some(_) => theme_colors.success,
+        None => theme_colors.text_color(),
+        Some(_) => theme_colors.success_color(),
     };
 
     let items = app
@@ -50,27 +53,30 @@ pub fn view<'a>(app: &'a IpScannerApp) -> Column<'a, Msg> {
                     .width(FillPortion(1))
                     .padding(8),
             ]
-            .spacing(10),
+            .spacing(10)
+            .width(Fill),
         ]
-        .spacing(10),
-        app.config.theme.clone(),
-        app.udp_connection.is_some(),
-        false,
+        .align_y(Center)
+        .spacing(15)
+        .width(Fill),
+        &app.config.theme_provider(),
     );
 
     // Create themed history container
     let history_container = helpers::sub_menu_container(
         column![text(history).color(history_color).height(Fill),],
-        app.config.theme.clone(),
+        &app.config.theme_provider(),
     );
 
     // Create themed info panel
     let info_panel = helpers::menu_container(
         column![
-            text("UDP Client/Server").size(24).color(theme_colors.text),
+            text("UDP Client/Server")
+                .size(24)
+                .color(theme_colors.text_color()),
             text_input("Ip Address", "").size(24),
         ],
-        app.config.theme.clone(),
+        &app.config.theme_provider(),
     );
 
     let items = vec![

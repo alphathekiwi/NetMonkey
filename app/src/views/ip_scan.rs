@@ -9,7 +9,7 @@ use net_monkey_core::{ScanMessage, ScannedIp, create_network_scanner};
 use net_monkey_theme::helpers;
 
 pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
-    let theme_colors = app.config.theme.colors();
+    let theme_colors = app.config.theme_provider().colors();
     match app.ips.is_empty() {
         true => {
             let scan_button = button(
@@ -17,7 +17,7 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
                     .width(Fill)
                     .center()
                     .size(20)
-                    .color(theme_colors.text),
+                    .color(theme_colors.text_color()),
             )
             .style(button::primary)
             .on_press(Msg::BeginScan)
@@ -31,10 +31,10 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
                         .width(Fill)
                         .center()
                         .size(30)
-                        .color(theme_colors.text_secondary)
+                        .color(theme_colors.text_color())
                 ]
                 .spacing(20),
-                app.config.theme.clone(),
+                &app.config.theme_provider(),
             );
 
             column![welcome_container]
@@ -46,7 +46,7 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
 
             let progress_container = helpers::sub_menu_container(
                 progress_bar(0.0..=255.0, app.scan_progress as f32),
-                app.config.theme.clone(),
+                &app.config.theme_provider(),
             );
 
             let results_container = helpers::menu_container(
@@ -57,7 +57,7 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
                             Column::with_children(ping).spacing(5)
                         ]
                         .spacing(10),
-                        app.config.theme.clone(),
+                        &app.config.theme_provider(),
                     ),
                     helpers::sub_menu_container(
                         column![
@@ -65,7 +65,7 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
                             Column::with_children(ips).spacing(5)
                         ]
                         .spacing(10),
-                        app.config.theme.clone(),
+                        &app.config.theme_provider(),
                     ),
                     helpers::sub_menu_container(
                         column![
@@ -73,11 +73,11 @@ pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
                             Column::with_children(ports).spacing(5)
                         ]
                         .spacing(10),
-                        app.config.theme.clone(),
+                        &app.config.theme_provider(),
                     ),
                 ]
                 .spacing(15),
-                app.config.theme.clone(),
+                &app.config.theme_provider(),
             );
 
             column![progress_container, results_container].spacing(20)
@@ -108,33 +108,33 @@ pub fn subscription() -> Subscription<Msg> {
 
 /// Extension trait for ScannedIp to provide UI element methods
 pub trait ScannedIpExt {
-    fn ping_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg>;
-    fn ips_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg>;
-    fn ports_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg>;
+    fn ping_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg>;
+    fn ips_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg>;
+    fn ports_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg>;
 }
 
 impl ScannedIpExt for ScannedIp {
-    fn ping_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg> {
+    fn ping_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg> {
         // Color-code ping times: green for fast, yellow for medium, red for slow
         let ping_text = text(self.ping.to_string() + "ms").width(Fill).center();
 
         if self.ping < 50 {
             ping_text.style(move |_theme| iced::widget::text::Style {
-                color: Some(theme_colors.success.into()),
+                color: Some(theme_colors.success_color()),
             })
         } else if self.ping < 150 {
             ping_text.style(move |_theme| iced::widget::text::Style {
-                color: Some(theme_colors.warning.into()),
+                color: Some(theme_colors.warning_color()),
             })
         } else {
             ping_text.style(move |_theme| iced::widget::text::Style {
-                color: Some(theme_colors.danger.into()),
+                color: Some(theme_colors.danger_color()),
             })
         }
         .into()
     }
 
-    fn ips_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg> {
+    fn ips_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg> {
         text(self.ip.to_string())
             .width(Fill)
             .center()
@@ -144,16 +144,16 @@ impl ScannedIpExt for ScannedIp {
             .into()
     }
 
-    fn ports_elem(&self, theme_colors: net_monkey_theme::NetMonkeyColors) -> Element<'_, Msg> {
+    fn ports_elem(&self, theme_colors: net_monkey_theme::SimpleColors) -> Element<'_, Msg> {
         let ports_text = text(self.ports_to_string()).width(Fill).center();
 
         if self.ports.is_empty() {
             ports_text.style(move |_theme| iced::widget::text::Style {
-                color: Some(theme_colors.text_secondary.into()),
+                color: Some(theme_colors.danger_color()),
             })
         } else {
             ports_text.style(move |_theme| iced::widget::text::Style {
-                color: Some(theme_colors.primary.into()),
+                color: Some(theme_colors.text_color()),
             })
         }
         .into()

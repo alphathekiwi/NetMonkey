@@ -1,4 +1,7 @@
 fn main() {
+    // Detect COSMIC environment during build
+    detect_cosmic_environment();
+
     #[cfg(target_os = "windows")]
     {
         #[cfg(target_env = "msvc")]
@@ -25,5 +28,41 @@ fn main() {
             eprintln!("{e}");
             std::process::exit(1);
         }
+    }
+}
+
+/// Detect COSMIC environment and enable features accordingly
+fn detect_cosmic_environment() {
+    // Check for COSMIC desktop environment
+    let is_cosmic = std::env::var("XDG_CURRENT_DESKTOP")
+        .map(|desktop| desktop.contains("COSMIC"))
+        .unwrap_or(false)
+        || std::env::var("XDG_SESSION_DESKTOP")
+            .map(|session| session.contains("cosmic"))
+            .unwrap_or(false)
+        || std::env::var("COSMIC_SESSION").is_ok();
+
+    if is_cosmic {
+        println!("cargo:rustc-cfg=cosmic_detected");
+        println!(
+            "cargo:warning=COSMIC desktop environment detected - consider enabling 'cosmic' feature"
+        );
+    }
+
+    // Check if cosmic feature is explicitly enabled
+    if cfg!(feature = "cosmic") {
+        println!("cargo:rustc-cfg=cosmic_enabled");
+        if is_cosmic {
+            println!("cargo:warning=Building with COSMIC integration for COSMIC desktop");
+        } else {
+            println!(
+                "cargo:warning=Building with COSMIC integration for non-COSMIC desktop (will fallback gracefully)"
+            );
+        }
+    }
+
+    // Help message for users
+    if is_cosmic && !cfg!(feature = "cosmic") {
+        println!("cargo:warning=Tip: Add --features cosmic to enable COSMIC desktop integration");
     }
 }

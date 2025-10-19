@@ -1,6 +1,6 @@
 use iced::widget::{container, row, text, tooltip};
 use iced::{Color, Element, Length, Padding, Renderer, Theme};
-use net_monkey_theme::NetMonkeyTheme;
+use net_monkey_theme::ThemeProvider;
 
 /// A text label component with an optional help hint icon that shows a tooltip on hover.
 ///
@@ -46,7 +46,7 @@ pub struct LabelWithHint {
     text_size: f32,
     padding: Padding,
     text_color: Option<Color>,
-    theme: NetMonkeyTheme,
+    theme: ThemeProvider,
 }
 
 impl LabelWithHint {
@@ -63,7 +63,7 @@ impl LabelWithHint {
             text_size: 14.0,
             padding: Padding::new(0.0),
             text_color: None,
-            theme: NetMonkeyTheme::Loaded("Dark".to_string()),
+            theme: ThemeProvider::default(),
         }
     }
 
@@ -100,7 +100,7 @@ impl LabelWithHint {
     ///
     /// # Arguments
     /// * `theme` - The NetMonkey theme variant to apply
-    pub fn theme(mut self, theme: NetMonkeyTheme) -> Self {
+    pub fn theme(mut self, theme: ThemeProvider) -> Self {
         self.theme = theme;
         self
     }
@@ -132,13 +132,9 @@ impl LabelWithHint {
                 .height(Length::Fixed(text_size))
                 .padding(Padding::new(text_size * 0.1))
                 .style(move |_theme: &Theme| container::Style {
-                    background: Some(iced::Background::Color(colors.primary.into())),
+                    background: Some(iced::Background::Color(colors.primary_color())),
                     border: iced::Border {
-                        color: Color::from_rgb(
-                            colors.primary.r * 0.75,
-                            colors.primary.g * 0.75,
-                            colors.primary.b * 0.75,
-                        ),
+                        color: colors.primary_light(),
                         width: 1.0,
                         radius: (text_size / 2.0).into(),
                     },
@@ -149,13 +145,13 @@ impl LabelWithHint {
             // Wrap help icon with tooltip using NetMonkey theming
             let help_icon_with_tooltip = tooltip(
                 help_icon,
-                container(text(hint_text).size(12.0).color(colors.text))
+                container(text(hint_text).size(12.0).color(colors.text_color()))
                     .padding(8.0)
                     .style(move |_theme: &Theme| container::Style {
-                        text_color: Some(colors.text.into()),
-                        background: Some(iced::Background::Color(colors.menu.into())),
+                        text_color: Some(colors.text_color()),
+                        background: Some(iced::Background::Color(colors.container_color())),
                         border: iced::Border {
-                            color: colors.primary.into(),
+                            color: colors.primary_color(),
                             width: 1.5,
                             radius: 6.0.into(),
                         },
@@ -184,7 +180,7 @@ impl LabelWithHint {
                     background: None,
                     border: iced::Border::default(),
                     shadow: iced::Shadow::default(),
-                    text_color: Some(colors.text.into()),
+                    text_color: Some(colors.text_color()),
                 })
                 .into()
         } else {
@@ -216,7 +212,7 @@ pub fn label_with_hint(
 pub fn themed_label_with_hint(
     label_text: impl Into<String>,
     hint_text: impl Into<String>,
-    theme: NetMonkeyTheme,
+    theme: ThemeProvider,
 ) -> LabelWithHint {
     LabelWithHint::new(label_text, hint_text).theme(theme)
 }
