@@ -100,6 +100,7 @@ pub struct IpScannerApp {
     // IP Scanner
     pub ips: Vec<ScannedIp>,
     pub scan_progress: u8,
+    pub loaded: bool,
     pub tcp_client: ConnectionData,
     pub udp_client: ConnectionData,
     pub tcp_server: ConnectionData,
@@ -113,6 +114,7 @@ impl IpScannerApp {
     pub fn loaded(&mut self, c: AppConfig, a: Vec<NetworkAdapter>) {
         self.config = c;
         self.adaptors = a;
+        self.loaded = true;
     }
 }
 

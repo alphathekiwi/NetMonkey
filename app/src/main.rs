@@ -280,9 +280,9 @@ impl IpScannerApp {
     }
 
     fn subscription_common(&self) -> Subscription<Msg> {
-        let scan_sub = match self.scan_progress {
-            255 => Subscription::none(),
-            _ => views::ip_scan::subscription(),
+        let scan_sub = match self.loaded && self.scan_progress < 255 {
+            true => views::ip_scan::subscription(),
+            false => Subscription::none(),
         };
         let kb_sub = keyboard::on_key_press(Msg::key_press);
         Subscription::batch([scan_sub, kb_sub])

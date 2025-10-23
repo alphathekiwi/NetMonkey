@@ -130,7 +130,10 @@ where
 ///     }
 /// }
 /// ```
-pub async fn create_network_scanner() -> tokio::sync::mpsc::UnboundedReceiver<ScanMessage> {
+pub async fn create_network_scanner(
+    ip: IpAddr,
+    mask: u8,
+) -> tokio::sync::mpsc::UnboundedReceiver<ScanMessage> {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     // Spawn the scanning task
@@ -138,8 +141,9 @@ pub async fn create_network_scanner() -> tokio::sync::mpsc::UnboundedReceiver<Sc
         let client = surge_ping::Client::new(&surge_ping::Config::default()).unwrap();
 
         let mut ping_futures = Vec::new();
-        for n in 0..=255 {
-            let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, n));
+        let ip_range = 0xffffffff_u32 >> mask;
+        for n in 0..=ip_range {
+            let ip = IpAddr::V4();
             let client = client.clone();
             let tx = tx.clone();
 

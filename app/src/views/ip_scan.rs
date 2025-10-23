@@ -10,78 +10,84 @@ use net_monkey_theme::helpers;
 
 pub fn view(app: &IpScannerApp) -> Column<'_, Msg> {
     let theme_colors = app.config.theme_provider().colors();
-    match app.ips.is_empty() {
-        true => {
-            let scan_button = button(
-                text("Scan Network")
-                    .width(Fill)
-                    .center()
-                    .size(20)
-                    .color(theme_colors.text_color()),
-            )
-            .style(button::primary)
-            .on_press(Msg::BeginScan)
-            .width(Fill)
-            .padding(12);
+    if app.ips.is_empty() {
+        let mut scan_button = button(
+            text("Scan Network")
+                .width(Fill)
+                .center()
+                .size(20)
+                .color(theme_colors.text_color()),
+        )
+        .style(button::primary)
+        .width(Fill)
+        .padding(12);
 
-            let welcome_container = helpers::menu_container(
-                column![
-                    stack!(hero_image(), scan_button),
-                    text("If I were a grease monkey\nwhy would I need this net?")
-                        .width(Fill)
-                        .center()
-                        .size(30)
-                        .color(theme_colors.text_color())
-                ]
-                .spacing(20),
-                &app.config.theme_provider(),
-            );
-
-            column![welcome_container]
+        if app.loaded {
+            scan_button = scan_button.on_press(Msg::BeginScan);
         }
-        false => {
-            let ping = app.ips.iter().map(|ip| ip.ping_elem(theme_colors));
-            let ips = app.ips.iter().map(|ip| ip.ips_elem(theme_colors));
-            let ports = app.ips.iter().map(|ip| ip.ports_elem(theme_colors));
 
-            let progress_container = helpers::sub_menu_container(
-                progress_bar(0.0..=255.0, app.scan_progress as f32),
-                &app.config.theme_provider(),
-            );
+        let status_text = if app.loaded {
+            text("If I were a grease monkey\nwhy would I need this net?")
+                .width(Fill)
+                .center()
+                .size(30)
+                .color(theme_colors.text_color())
+        } else {
+            text("Loading network configuration...")
+                .width(Fill)
+                .center()
+                .size(24)
+                .color(theme_colors.warning_color())
+        };
 
-            let results_container = helpers::menu_container(
-                row![
-                    helpers::sub_menu_container(
-                        column![
-                            text("Ping (ms)").size(16),
-                            Column::with_children(ping).spacing(5)
-                        ]
-                        .spacing(10),
-                        &app.config.theme_provider(),
-                    ),
-                    helpers::sub_menu_container(
-                        column![
-                            text("IP Address").size(16),
-                            Column::with_children(ips).spacing(5)
-                        ]
-                        .spacing(10),
-                        &app.config.theme_provider(),
-                    ),
-                    helpers::sub_menu_container(
-                        column![
-                            text("Open Ports").size(16),
-                            Column::with_children(ports).spacing(5)
-                        ]
-                        .spacing(10),
-                        &app.config.theme_provider(),
-                    ),
-                ]
-                .spacing(15),
-                &app.config.theme_provider(),
-            );
+        let welcome_container = helpers::menu_container(
+            column![stack!(hero_image(), scan_button), status_text].spacing(20),
+            &app.config.theme_provider(),
+        );
 
-            column![progress_container, results_container].spacing(20)
-        }
+        column![welcome_container]
+    } else {
+        let ping = app.ips.iter().map(|ip| ip.ping_elem(theme_colors));
+        let ips = app.ips.iter().map(|ip| ip.ips_elem(theme_colors));
+        let ports = app.ips.iter().map(|ip| ip.ports_elem(theme_colors));
+
+        let progress_container = helpers::sub_menu_container(
+            progress_bar(0.0..=255.0, app.scan_progress as f32),
+            &app.config.theme_provider(),
+        );
+
+        let results_container = helpers::menu_container(
+            row![
+                helpers::sub_menu_container(
+                    column![
+                        text("Ping (ms)").size(16),
+                        Column::with_children(ping).spacing(5)
+                    ]
+                    .spacing(10),
+                    &app.config.theme_provider(),
+                ),
+                helpers::sub_menu_container(
+                    column![
+                        text("IP Address").size(16),
+                        Column::with_children(ips).spacing(5)
+                    ]
+                    .spacing(10),
+                    &app.config.theme_provider(),
+                ),
+                helpers::sub_menu_container(
+                    column![
+                        text("Open Ports").size(16),
+                        Column::with_children(ports).spacing(5)
+                    ]
+                    .spacing(10),
+                    &app.config.theme_provider(),
+                ),
+            ]
+            .spacing(15),
+            &app.config.theme_provider(),
+        );
+
+        column![progress_container, results_container].spacing(20)
     }
 }
 
